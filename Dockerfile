@@ -9,14 +9,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# SoccerNet 공식 라이브러리 및 필수 도구 설치
-RUN pip install --no-cache-dir \
-    SoccerNet \
-    opencv-python \
-    numpy \
-    tqdm
+# 1. requirements.txt 복사 및 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 검증 스크립트 복사
-COPY verify_setup.py .
+# 2. 소스 코드 복사
+COPY . .
 
+# 검증 스크립트 실행을 기본값으로 설정
 CMD ["python", "verify_setup.py"]

@@ -1,42 +1,71 @@
 import os
+import json
 from pathlib import Path
-
+from datetime import datetime
 from SoccerNet.Downloader import SoccerNetDownloader, getListGames
 
+from dotenv import load_dotenv # requirements.txt에 추가됨
 
-def check_setup():
-    print("--- [1/2] 라이브러리 로드 테스트 ---")
-    try:
-        import SoccerNet
-        print("✅ SoccerNet 라이브러리가 성공적으로 로드되었습니다.")
-    except ImportError:
-        print("❌ 라이브러리 로드 실패.")
-        return
+# .env 파일의 내용을 환경 변수로 로드합니다.
+load_dotenv()
 
-    print("\n--- [2/2] 데이터 접근 테스트 ---")
-    pw = os.getenv("SOCCERNET_PW", "s0cc3rn3t")
+# 이제 os.getenv를 통해 안전하게 가져옵니다.
+pw = os.getenv("SOCCERNET_PW")
 
-    # 저장 경로를 data 폴더로 지정하여 다운로더 초기화
-    local_dir = Path("data") / "spotting"
-    downloader = SoccerNetDownloader(LocalDirectory=str(local_dir))
-    downloader.password = pw
+def log(msg, level="INFO"):
+    symbol = {"INFO": "💡", "SUCCESS": "✅", "WARN": "⚠️", "ERROR": "❌"}
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {symbol.get(level, '·')} {msg}")
 
-    try:
-        # valid split의 첫 경기 라벨 하나만 다운로드하여 연결 확인
-        game = getListGames(split="valid", task="spotting")[0]
-        label_file = local_dir / game / "Labels-v2.json"
+def find_full_path_auto(partial_path):
+    """경기 이름만 있어도 전체 경로(리그/시즌/경기)를 찾아냅니다."""
+    for spl in ["train", "valid", "test", "challenge"]:
+        # 모든 경기의 전체 경로 리스트를 가져옴
+        all_games = getListGames(split=spl, task="spotting")
+        for full_path in all_games:
+            # 사용자가 입력한 문자열이 전체 경로의 끝부분과 일치하는지 확인
+            if full_path.endswith(partial_path):
+                return full_path, spl
+    return None, None
 
-        downloader.downloadGame(game=game, files=["Labels-v2.json"], spl="valid")
+def smart_download():
+    log("SoccerNet 경로 자동 최적화 엔진 기동", "INFO")
+    
+    with open("download_config.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
 
-        if not label_file.exists() or label_file.stat().st_size == 0:
-            raise RuntimeError(f"라벨 파일 다운로드 확인 실패: {label_file}")
+    # 문자열/리스트 형식 자동 대응
+    games_raw = config.get("games") or []
+    games_list = [games_raw] if isinstance(games_raw, str) else games_raw
 
-        print("\n✅ API 연결 및 데이터 다운로드 테스트 성공!")
-        print("이제 프로젝트를 시작할 준비가 되었습니다.")
-    except Exception as e:
-        print(f"\n❌ 에러 발생: {e}")
-        print("네트워크 상태나 비밀번호(SOCCERNET_PW)를 확인하세요.")
+    downloader = SoccerNetDownloader(LocalDirectory="data/spotting")
+    downloader.password = os.getenv("SOCCERNET_PW", "s0cc3rn3t")
 
+    for i, item in enumerate(games_list, 1):
+        print("-" * 60)
+        input_path = item.strip() if isinstance(item, str) else f"{item['league']}/{item['season']}/{item['game']}"
+        
+        log(f"[{i}/{len(games_list)}] 입력값 확인: {input_path}")
+
+        # 1. 자동 경로 검색
+        full_path, split = find_full_path_auto(input_path)
+        
+        if not full_path:
+            log(f"데이터셋에서 '{input_path}'와 일치하는 항목을 찾을 수 없습니다.", "ERROR")
+            log("팁: 'spain_laliga/2016-2017/...' 처럼 리그와 시즌을 포함해 보세요.", "INFO")
+            continue
+            
+        log(f"정식 경로 발견: {full_path} (세트: {split})", "SUCCESS")
+
+        # 2. 다운로드 실행
+        target_files = config.get("settings", {}).get("default_files", ["Labels-v2.json", "1_720p.mkv"])
+        for f in target_files:
+            log(f"다운로드 중: {f}")
+            try:
+                downloader.downloadGame(game=full_path, files=[f], spl=split)
+                log(f"완료: {f}", "SUCCESS")
+            except Exception as e:
+                log(f"에러: {e}", "ERROR")
 
 if __name__ == "__main__":
-    check_setup()
+    smart_download()
