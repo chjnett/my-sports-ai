@@ -1,0 +1,11 @@
+services:
+  soccernet-app:
+    build: .
+    container_name: soccernet_checker
+    volumes:
+      - .:/app
+      - ./data:/app/data  # 대용량 영상 및 특징 데이터 저장소
+    environment:
+      - SOCCERNET_PW=s0cc3rn3t  # 메일로 수령한 비밀번호
+    tty: true
+    stdin_open: true

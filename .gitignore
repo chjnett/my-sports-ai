@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Docker/local data
+data/*
+!data/.gitkeep
+
+# Local environment
+.env
+.venv/
+venv/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
