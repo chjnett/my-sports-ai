@@ -151,7 +151,7 @@ cd C:\chun\workspace\my-sports-ai
 SoccerNet 비밀번호는 `.env` 파일에서 관리합니다.
 
 ```text
-SOCCERNET_PW=s0cc3rn3t
+SOCCERNET_PW=
 ```
 
 메일로 받은 실제 비밀번호가 있으면 `s0cc3rn3t` 값을 교체합니다.
