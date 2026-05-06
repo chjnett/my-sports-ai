@@ -2,6 +2,8 @@
 
 이 폴더는 논문과 연구 개발에 필요한 문서를 보관합니다.
 
+루트 문서 [YOLO_DATASET_TEST_GUIDE.md](../YOLO_DATASET_TEST_GUIDE.md)는 YOLO 데이터셋 준비, 라벨링, 학습 테스트 절차를 담당합니다.
+
 ## 문서 목록
 
 | 문서 | 내용 |

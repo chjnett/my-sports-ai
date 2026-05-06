@@ -2,6 +2,15 @@
 data
 outputs
 paper
+datasets
+models
+runs
+*.pt
+*.pth
+*.onnx
+*.engine
+!datasets/.gitkeep
+!models/.gitkeep
 __pycache__
 *.pyc
 .venv

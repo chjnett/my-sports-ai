@@ -1,0 +1,7 @@
+path: /app/datasets/yolo_broadcast_graphics
+train: images/train
+val: images/val
+names:
+  0: scoreboard
+  1: overlay
+  2: replay_logo

@@ -7,18 +7,28 @@ Phase 1은 이 프로젝트의 첫 구현 우선순위입니다. 단, 최종 기
 ## 1. Phase 1 목표
 
 1. 프레임 샘플링: 풀 경기 영상을 1fps 기준으로 샘플링합니다.
-2. 영역 설정: 스코어보드와 이벤트 자막 영역을 crop합니다.
+2. 영역 설정: 스코어보드, 이벤트 자막, 리플레이 전환 로고 영역을 crop합니다.
 3. OCR 실행: 팀명, 점수, 경기 시간, 이벤트 텍스트를 추출합니다.
 4. 시계열 정제: OCR 오류를 시간축 논리로 보정합니다.
 5. Goal 검증: SoccerNet `Labels-v2.json`의 Goal label과 score change를 비교합니다.
 
 ## 2. 실행 전략
 
-처음부터 YOLO, DALI, CUDA 최적화를 모두 적용하지 않습니다. 연구 결과를 빨리 확인하기 위해 MVP를 먼저 구현하고, 이후 자동화와 GPU 최적화를 확장합니다.
+30경기 batch 분석을 목표로 하므로 자동 탐지 모델을 사용합니다. 다만 학습 데이터셋이 만들어지기 전까지는 수동 crop으로 샘플 결과를 검증하고, 이후 YOLO detector로 자동화합니다.
 
 ```text
-MVP: OpenCV/ffmpeg + manual crop + PaddleOCR + smoothing
-확장: YOLO11n + NVIDIA DALI + batch GPU OCR
+MVP: OpenCV/ffmpeg + manual crop + PaddleOCR + replay logo boundary + smoothing
+Batch 분석 기본: YOLO11s detector + PaddleOCR PP-OCRv5 server
+빠른 테스트: YOLO11n detector + PaddleOCR PP-OCRv5 mobile
+최적화: NVIDIA DALI + batch GPU OCR
+```
+
+Detector class:
+
+```text
+scoreboard
+overlay
+replay_logo
 ```
 
 ## 3. MVP 범위
@@ -58,6 +68,24 @@ outputs/frames/{match_id}/{half}/{timestamp}.jpg
 
 초기에는 수동 crop으로 시작합니다. 자동 탐지는 Phase 1.5로 둡니다.
 
+이 타겟 경기의 리플레이 패턴은 스코어보드가 사라지는 것만으로 판단하지 않습니다. 프리미어리그 중앙 전환 마크가 등장하고, 리플레이 장면이 나온 뒤, 같은 전환 마크가 다시 등장하며 라이브 화면으로 돌아옵니다.
+
+```text
+live play
+-> Premier League center transition logo
+-> replay segment
+-> Premier League center transition logo
+-> live play
+```
+
+따라서 crop 영역은 최소 3개를 사용합니다.
+
+```text
+scoreboard  : 경기 시간, 팀명, 점수 OCR
+overlay     : 선수명, 카드, 교체, VAR, 이벤트 자막 OCR
+replay_logo : 중앙 프리미어리그 리플레이 전환 마크 탐지
+```
+
 입력:
 
 ```text
@@ -77,7 +105,8 @@ outputs/crops/{match_id}/{half}/{timestamp}.jpg
 {
   "default": {
     "scoreboard": { "x": 0, "y": 0, "w": 420, "h": 90 },
-    "overlay": { "x": 200, "y": 520, "w": 880, "h": 160 }
+    "overlay": { "x": 200, "y": 520, "w": 880, "h": 160 },
+    "replay_logo": { "x": 420, "y": 180, "w": 440, "h": 320 }
   }
 }
 ```
@@ -87,7 +116,28 @@ outputs/crops/{match_id}/{half}/{timestamp}.jpg
 ```text
 5경기 이상 scoreboard crop 생성
 crop 이미지에 경기 시간과 점수 영역이 포함됨
+replay_logo crop 이미지에 중앙 전환 마크가 포함될 수 있는 영역이 잡힘
 ```
+
+### 3.2.1 Replay Logo Boundary Detection
+
+리플레이 구간은 OCR 텍스트가 아니라 중앙 전환 로고의 시각적 신호로 먼저 탐지합니다.
+
+초기 MVP 규칙:
+
+```text
+replay_logo crop에서 프리미어리그 전환 마크가 강하게 등장하는 timestamp를 찾음
+가까운 두 전환 마크 사이 구간을 replay_segment 후보로 묶음
+```
+
+출력 이벤트:
+
+```text
+replay_transition_logo
+replay_segment
+```
+
+이 신호는 이후 Event Graph에서 `score_change`, `label_nearby`, `audio_peak`와 함께 하이라이트 후보의 근거로 사용합니다.
 
 ### 3.3 OCR Execution
 
@@ -102,6 +152,7 @@ crop 이미지에 경기 시간과 점수 영역이 포함됨
 추가시간
 Replay / VAR / Goal / Card / Substitution 자막
 선수명 그래픽
+리플레이 전환 로고 등장 시점
 ```
 
 출력 CSV:
@@ -123,6 +174,7 @@ parsed_clock
 parsed_home_score
 parsed_away_score
 event_keyword
+visual_event
 ```
 
 완료 기준:
@@ -210,21 +262,32 @@ raw OCR vs smoothed OCR 비교 가능
 
 MVP가 동작한 뒤 아래 기능을 추가합니다.
 
-### 4.1 YOLO11n Detection
+### 4.1 YOLO11s Detection
 
 목표:
 
 ```text
 스코어보드 영역 자동 탐지
 이벤트 자막 overlay 영역 자동 탐지
+프리미어리그 중앙 replay_logo 자동 탐지
 경기별 crop config 자동 생성
 ```
 
 산출물:
 
 ```text
-models/yolo_scoreboard.pt
+datasets/yolo_broadcast_graphics/
+models/yolo/broadcast_graphics_yolo11s.pt
 outputs/detections/{match_id}.json
+```
+
+학습 데이터 최소 목표:
+
+```text
+5경기 x 20프레임 = 100장
+scoreboard bbox 80개 이상
+overlay bbox 30개 이상
+replay_logo bbox 20개 이상
 ```
 
 ### 4.2 NVIDIA DALI Decoding
@@ -292,6 +355,10 @@ src/phase1a.py
 
 ```text
 src/ocr/crop_config.py
+src/vision/prepare_yolo_dataset.py
+src/vision/train_detector.py
+src/vision/detect_graphics.py
+src/vision/replay_logo.py
 src/ocr/run_ocr.py
 src/ocr/clean_ocr.py
 src/ocr/smoothing.py
@@ -306,6 +373,9 @@ outputs/crops/
 outputs/ocr_csv/
 outputs/reports/
 configs/
+datasets/
+models/
+outputs/detections/
 ```
 
 ## 7. Docker 실행 명령

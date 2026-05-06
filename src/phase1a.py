@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--quality", default="720p", help="Preferred video quality.")
     parser.add_argument("--fps", type=float, default=1.0, help="Sampling FPS.")
     parser.add_argument("--max-seconds", type=float, help="Optional limit for smoke tests.")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing sampled frames.")
     parser.add_argument("--reports-dir", default="outputs/reports", help="Report output directory.")
     args = parser.parse_args()
 
@@ -40,6 +41,7 @@ def main() -> None:
             data_root=args.data_root,
             sample_fps=args.fps,
             max_seconds=args.max_seconds,
+            overwrite=args.overwrite,
         )
         for video in videos
     ]

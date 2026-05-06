@@ -82,6 +82,7 @@ data/
 | [PROJECT_MASTER_PLAN.md](PROJECT_MASTER_PLAN.md) | 전체 개발 우선순위와 로드맵 |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | 최초 환경 세팅 |
 | [RUN_GUIDE.md](RUN_GUIDE.md) | GUI 실행과 다운로드 사용법 |
+| [YOLO_DATASET_TEST_GUIDE.md](YOLO_DATASET_TEST_GUIDE.md) | YOLO 데이터셋 준비/라벨링/학습 테스트 |
 | [docs/README.md](docs/README.md) | 연구 문서 인덱스 |
 | [docs/RESEARCH_ARCHITECTURE.md](docs/RESEARCH_ARCHITECTURE.md) | 전체 연구 아키텍처 |
 | [docs/PHASE_1_VISION_OCR_PIPELINE.md](docs/PHASE_1_VISION_OCR_PIPELINE.md) | 1순위 OCR 파이프라인 실행 명세 |

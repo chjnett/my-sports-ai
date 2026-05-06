@@ -1,0 +1,10 @@
+# GPU vision stack for detector/OCR experiments.
+# Torch is installed separately in Dockerfile.gpu from the official CUDA wheel index.
+
+ultralytics
+paddleocr
+opencv-python
+numpy
+pandas
+tqdm
+pyyaml

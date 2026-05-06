@@ -1,0 +1,30 @@
+services:
+  vision-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    container_name: my_sports_ai_vision_gpu
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./datasets:/app/datasets
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    gpus: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: "8gb"
+    tty: true
+    stdin_open: true
+    command: python3 -c "import torch; print('torch cuda:', torch.cuda.is_available())"

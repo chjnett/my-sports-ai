@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import cv2
+from tqdm import tqdm
 
 
 VIDEO_NAME_RE = re.compile(r"^(?P<half>[12])(?:_(?P<quality>\d+p))?\.(mkv|mp4)$", re.IGNORECASE)
@@ -23,6 +24,7 @@ class SamplingSummary:
     duration_sec: float
     sample_fps: float
     saved_frames: int
+    skipped_frames: int
 
 
 def sanitize_path_part(value: str) -> str:
@@ -65,6 +67,7 @@ def sample_video(
     max_seconds: float | None = None,
     image_ext: str = "jpg",
     jpeg_quality: int = 90,
+    overwrite: bool = False,
 ) -> SamplingSummary:
     video = Path(video_path)
     root = Path(data_root)
@@ -88,23 +91,39 @@ def sample_video(
     end_sec = min(duration_sec, max_seconds) if max_seconds else duration_sec
     interval_sec = 1.0 / sample_fps
     saved = 0
+    skipped = 0
     timestamp_sec = 0.0
+    expected_samples = int(end_sec / interval_sec) + 1 if end_sec > 0 else 0
 
     encode_params = []
     if image_ext.lower() in {"jpg", "jpeg"}:
         encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), int(jpeg_quality)]
 
-    while timestamp_sec <= end_sec:
-        capture.set(cv2.CAP_PROP_POS_MSEC, timestamp_sec * 1000.0)
-        ok, frame = capture.read()
-        if not ok:
-            break
+    with tqdm(
+        total=expected_samples,
+        desc=f"Sampling half {half}",
+        unit="frame",
+        dynamic_ncols=True,
+    ) as progress:
+        while timestamp_sec <= end_sec:
+            timestamp_ms = int(round(timestamp_sec * 1000))
+            frame_path = out_dir / f"{timestamp_ms:010d}.{image_ext}"
 
-        timestamp_ms = int(round(timestamp_sec * 1000))
-        frame_path = out_dir / f"{timestamp_ms:010d}.{image_ext}"
-        cv2.imwrite(str(frame_path), frame, encode_params)
-        saved += 1
-        timestamp_sec += interval_sec
+            if frame_path.exists() and not overwrite:
+                skipped += 1
+                timestamp_sec += interval_sec
+                progress.update(1)
+                continue
+
+            capture.set(cv2.CAP_PROP_POS_MSEC, timestamp_sec * 1000.0)
+            ok, frame = capture.read()
+            if not ok:
+                break
+
+            cv2.imwrite(str(frame_path), frame, encode_params)
+            saved += 1
+            timestamp_sec += interval_sec
+            progress.update(1)
 
     capture.release()
 
@@ -118,6 +137,7 @@ def sample_video(
         duration_sec=duration_sec,
         sample_fps=sample_fps,
         saved_frames=saved,
+        skipped_frames=skipped,
     )
 
 
@@ -134,6 +154,7 @@ def write_summary_csv(summaries: list[SamplingSummary], output_path: str | Path)
         "duration_sec",
         "sample_fps",
         "saved_frames",
+        "skipped_frames",
     ]
     with out.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -153,6 +174,7 @@ def main() -> None:
     parser.add_argument("--fps", type=float, default=1.0, help="Sampling FPS.")
     parser.add_argument("--quality", default="720p", help="Preferred SoccerNet quality when using --match-dir.")
     parser.add_argument("--max-seconds", type=float, help="Optional limit for quick smoke tests.")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing sampled frames.")
     args = parser.parse_args()
 
     if not args.video and not args.match_dir:
@@ -172,13 +194,15 @@ def main() -> None:
             data_root=args.data_root,
             sample_fps=args.fps,
             max_seconds=args.max_seconds,
+            overwrite=args.overwrite,
         )
         for video in videos
     ]
 
     summary_path = write_summary_csv(summaries, args.summary)
-    total_frames = sum(summary.saved_frames for summary in summaries)
-    print(f"Sampled {len(summaries)} video(s), wrote {total_frames} frame(s).")
+    total_saved = sum(summary.saved_frames for summary in summaries)
+    total_skipped = sum(summary.skipped_frames for summary in summaries)
+    print(f"Sampled {len(summaries)} video(s), wrote {total_saved} frame(s), skipped {total_skipped} existing frame(s).")
     print(f"Summary: {summary_path}")
 
 

@@ -13,3 +13,4 @@ python-dotenv
 # GUI downloader
 streamlit
 pandas
+pyyaml
