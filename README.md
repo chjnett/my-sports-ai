@@ -57,7 +57,7 @@ docker compose up
 SoccerNet 데이터 접근 비밀번호는 `.env` 파일에서 관리합니다.
 
 ```text
-SOCCERNET_PW=s0cc3rn3t
+SOCCERNET_PW=
 ```
 
 Broadcast video 다운로드는 SoccerNet NDA 승인과 올바른 비밀번호가 필요합니다.
