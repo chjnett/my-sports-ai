@@ -5,9 +5,12 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+ENV PYTHONPATH=/app
 
 # 1. requirements.txt 복사 및 설치
 COPY requirements.txt .

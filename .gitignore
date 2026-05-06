@@ -5,6 +5,21 @@ __pycache__/
 # Docker/local data
 data/*
 !data/.gitkeep
+outputs/*
+!outputs/.gitkeep
+!outputs/frames/
+outputs/frames/*
+!outputs/frames/.gitkeep
+!outputs/crops/
+outputs/crops/*
+!outputs/crops/.gitkeep
+!outputs/ocr_csv/
+outputs/ocr_csv/*
+!outputs/ocr_csv/.gitkeep
+!outputs/reports/
+outputs/reports/*
+!outputs/reports/.gitkeep
+paper/
 
 # Local environment
 .env

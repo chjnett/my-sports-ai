@@ -7,6 +7,8 @@ services:
       - ./data:/app/data  # 대용량 영상 및 특징 데이터 저장소
     env_file:  # .env 파일을 자동으로 로드합니다.
       - .env
+    environment:
+      - PYTHONPATH=/app
     ports:
       - "8501:8501"
     tty: true
