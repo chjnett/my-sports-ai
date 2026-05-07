@@ -45,9 +45,9 @@ replay_transition_logo / replay_segment 이벤트 CSV 생성 완료
 현재 다음 작업:
 
 ```text
-replay_logo 검출 review 이미지 생성
-replay_segment 후보 실제 구간 검증
-scoreboard crop/OCR 입력 생성
+PaddleOCR scoreboard OCR 실행
+score/clock parsing
+temporal smoothing
 ```
 
 Phase 1 기준 완성도:
@@ -567,6 +567,69 @@ docker compose run --rm soccernet-app python -m src.vision.build_replay_events \
 input replay detections: 13
 transition events: 10
 replay segments: 2
+```
+
+### 7.6 Detection Review 이미지 생성
+
+`replay_logo` 검출 결과를 이미지로 확인합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.vision.render_detection_reviews \
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv \
+  --output-root outputs/reviews/chelsea_burnley_2015_replay_logo \
+  --class-name replay_logo \
+  --min-conf 0.25
+```
+
+현재 결과:
+
+```text
+rows selected: 13
+review images: 10
+contact sheet: outputs/reviews/chelsea_burnley_2015_replay_logo/contact_sheet.jpg
+```
+
+### 7.7 Replay Segment Review 생성
+
+`replay_segment` 후보 구간을 일정 간격 프레임 contact sheet로 확인합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.vision.render_event_segments \
+  --events outputs/events/chelsea_burnley_2015_replay_events.csv \
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" \
+  --output-root outputs/reviews/chelsea_burnley_2015_replay_segments \
+  --event-type replay_segment \
+  --sample-every-sec 5
+```
+
+현재 결과:
+
+```text
+segments selected: 2
+segment sheets written: 2
+```
+
+### 7.8 Scoreboard Crop 생성
+
+검출된 scoreboard bbox를 OCR 입력 이미지로 crop합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.vision.crop_detections \
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv \
+  --output-root outputs/crops/chelsea_burnley_2015_detector \
+  --summary outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv \
+  --class-name scoreboard \
+  --min-conf 0.70 \
+  --padding 8 \
+  --best-per-frame
+```
+
+현재 결과:
+
+```text
+crops written: 5277
+output root: outputs/crops/chelsea_burnley_2015_detector
+summary: outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv
 ```
 
 ## 8. Phase 1 완료 기준

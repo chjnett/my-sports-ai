@@ -317,8 +317,15 @@ replay_logo bbox 20개 이상
 - [x] `src/vision/build_replay_events.py` 구현
 - [x] replay_transition_logo 이벤트 CSV 생성
 - [x] replay_segment 후보 CSV 생성
-- [ ] replay_logo 검출 결과 review 이미지 생성
-- [ ] replay_segment 후보 실제 영상 구간 검증
+- [x] replay_logo 검출 결과 review 이미지 생성
+- [x] `src/vision/render_detection_reviews.py` 구현
+- [x] `src/vision/render_event_segments.py` 구현
+- [x] replay_segment 후보 구간 contact sheet 생성
+- [x] replay_segment 후보 실제 영상 구간 1차 시각 확인
+- [x] `src/vision/crop_detections.py` 구현
+- [x] scoreboard detection 기반 crop/OCR 입력 smoke 생성
+- [x] scoreboard detection 기반 전체 crop/OCR 입력 생성
+- [ ] PaddleOCR scoreboard OCR 실행
 
 YOLO11n smoke training 결과:
 
@@ -523,6 +530,50 @@ replay segment candidates: 2
 ```text
 half_1: 408, 1523, 1747
 half_2: 305, 379, 463, 847, 1032, 1630, 1999
+```
+
+Replay logo detection review 결과:
+
+```text
+구현 파일: src/vision/render_detection_reviews.py
+입력: outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+class filter: replay_logo
+min_conf: 0.25
+rows selected: 13
+review images: 10
+output: outputs/reviews/chelsea_burnley_2015_replay_logo/images
+contact sheet: outputs/reviews/chelsea_burnley_2015_replay_logo/contact_sheet.jpg
+```
+
+해석:
+
+```text
+review contact sheet 기준 replay_logo 검출은 실제 Premier League 전환 로고에 집중됨.
+다음 단계는 replay_segment 후보 구간을 실제 영상 시간으로 확인하거나, scoreboard crop/OCR로 진행.
+```
+
+Replay segment review 결과:
+
+```text
+구현 파일: src/vision/render_event_segments.py
+입력: outputs/events/chelsea_burnley_2015_replay_events.csv
+출력: outputs/reviews/chelsea_burnley_2015_replay_segments
+segment sheets written: 2
+missing frames: 0
+```
+
+Scoreboard crop 생성 결과:
+
+```text
+구현 파일: src/vision/crop_detections.py
+입력: outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+class filter: scoreboard
+min_conf: 0.70
+best_per_frame: true
+padding: 8
+crops written: 5277
+output root: outputs/crops/chelsea_burnley_2015_detector
+summary: outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv
 ```
 
 ### Phase 1C: OCR 실행

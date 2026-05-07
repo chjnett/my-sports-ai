@@ -40,7 +40,7 @@ Vision detector 기준: 약 75%
 
 ```text
 프레임 추출, scoreboard 탐지, replay_logo 후보 추출/검출, replay event CSV 생성까지 완료.
-이제 OCR 실행과 score_change 검증으로 넘어갈 수 있는 상태.
+scoreboard crop까지 생성되어 이제 OCR 실행과 score_change 검증으로 넘어갈 수 있는 상태.
 ```
 
 완료:
@@ -80,10 +80,8 @@ datasets/yolo_broadcast_graphics_scoreboard_replay
 다음 구현 대상:
 
 ```text
-replay_logo 검출 결과 review 이미지 생성
-replay_segment 후보 실제 영상 구간 검증
-scoreboard/replay_logo detection 기반 crop 생성
-OCR CSV
+PaddleOCR scoreboard OCR 실행
+score/clock parsing
 OCR smoothing
 Score change detection
 Goal label evaluation

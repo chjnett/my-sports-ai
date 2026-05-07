@@ -803,6 +803,72 @@ CSV 확인:
 Get-Content outputs\events\chelsea_burnley_2015_replay_events.csv
 ```
 
+검출 결과를 이미지로 리뷰합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.render_detection_reviews `
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv `
+  --output-root outputs/reviews/chelsea_burnley_2015_replay_logo `
+  --class-name replay_logo `
+  --min-conf 0.25
+```
+
+현재 review 생성 결과:
+
+```text
+rows selected: 13
+review images: 10
+output: outputs/reviews/chelsea_burnley_2015_replay_logo/images
+contact sheet: outputs/reviews/chelsea_burnley_2015_replay_logo/contact_sheet.jpg
+```
+
+확인 명령:
+
+```powershell
+explorer "C:\chun\workspace\my-sports-ai\outputs\reviews\chelsea_burnley_2015_replay_logo"
+```
+
+replay_segment 후보 구간을 contact sheet로 확인합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.render_event_segments `
+  --events outputs/events/chelsea_burnley_2015_replay_events.csv `
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" `
+  --output-root outputs/reviews/chelsea_burnley_2015_replay_segments `
+  --event-type replay_segment `
+  --sample-every-sec 5
+```
+
+현재 생성 결과:
+
+```text
+segments selected: 2
+segment sheets written: 2
+output: outputs/reviews/chelsea_burnley_2015_replay_segments
+```
+
+scoreboard detector bbox를 OCR용 crop 이미지로 변환합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.crop_detections `
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv `
+  --output-root outputs/crops/chelsea_burnley_2015_detector `
+  --summary outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv `
+  --class-name scoreboard `
+  --min-conf 0.70 `
+  --padding 8 `
+  --best-per-frame
+```
+
+현재 생성 결과:
+
+```text
+rows selected: 5277
+crops written: 5277
+output root: outputs/crops/chelsea_burnley_2015_detector
+summary: outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv
+```
+
 ## 17. 타겟 경기 추론
 
 학습된 모델로 타겟 경기 프레임에 대해 inference를 실행합니다.
