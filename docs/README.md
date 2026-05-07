@@ -14,6 +14,7 @@
 | [TECHNICAL_SPEC.md](TECHNICAL_SPEC.md) | GPU, 모델, 라이브러리, 인프라 기술 사양 |
 
 루트 문서 [BATCH_5_MATCH_GUIDE.md](../BATCH_5_MATCH_GUIDE.md)는 5경기 batch 검증 실행 절차를 담당합니다.
+루트 문서 [HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md](../HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md)는 하이라이트 clip/영상 자동 생성 설계를 담당합니다.
 
 ## 현재 연구 방향
 
