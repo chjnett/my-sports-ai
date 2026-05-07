@@ -1,0 +1,44 @@
+name: epl_2014_2015_batch5
+data_root: data/spotting
+frames_root: outputs/frames
+output_root: outputs/batch_5
+quality: 720p
+fps: 1.0
+
+model: models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+imgsz: 1280
+device: 0
+detection_conf: 0.25
+
+scoreboard_crop_min_conf: 0.70
+scoreboard_crop_padding: 8
+replay_logo_min_conf: 0.25
+
+smoothing_window_sec: 8
+smoothing_min_votes: 3
+
+text_team_tokens: CHE,BUR,CRY,ARS,SWA,MUN,SOU,LIV
+text_stopwords: CORN,CORNER,CORNERS,CORNRS,RUR,CHEBUR
+text_min_token_length: 4
+text_merge_gap_sec: 20
+
+ranking_boost_tokens: DROGBA,VOKES,GIROUD,CAZORLA,GOMIS,ROONEY,STURRIDGE,COUTINHO
+top_k_values: 1,3,5,10,20
+review_top_k: 5
+
+matches:
+  - id: chelsea_burnley_2015_02_21
+    split: train
+    relative_path: england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley
+  - id: crystal_palace_arsenal_2015_02_21
+    split: train
+    relative_path: england_epl/2014-2015/2015-02-21 - 18-00 Crystal Palace 1 - 2 Arsenal
+  - id: swansea_manchester_united_2015_02_21
+    split: train
+    relative_path: england_epl/2014-2015/2015-02-21 - 18-00 Swansea 2 - 1 Manchester United
+  - id: southampton_liverpool_2015_02_22
+    split: train
+    relative_path: england_epl/2014-2015/2015-02-22 - 19-15 Southampton 0 - 2 Liverpool
+  - id: burnley_arsenal_2015_04_11
+    split: valid
+    relative_path: england_epl/2014-2015/2015-04-11 - 19-30 Burnley 0 - 1 Arsenal

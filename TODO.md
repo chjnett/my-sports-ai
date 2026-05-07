@@ -30,6 +30,8 @@ highlight candidate fusion
 highlight candidate ranking
 Top-K 평가
 Top-5 visual review contact sheet 생성
+5경기 batch 설정
+batch runner 구현
 ```
 
 현재 타겟 경기:
@@ -124,15 +126,20 @@ ranked Top-5 Recall@30s: 2/2 = 1.000
 - [x] ranked Top-5 Recall@30s 2/2 확인
 - [x] `src/events/render_ranked_candidates.py` 구현
 - [x] Top-5 contact sheet 생성
+- [x] `configs/batch_5_matches.yml` 작성
+- [x] `src/pipeline/run_batch.py` 구현
+- [x] `BATCH_5_MATCH_GUIDE.md` 작성
 
 ## 2. 바로 다음 작업
 
-### P0. Top-5 후보 시각 리뷰
+### P0. 5경기 batch 실행
 
-- [x] ranked Top-5 후보의 source frame/contact sheet 생성
-- [ ] contact sheet를 열고 Goal 후보인지 아닌지 육안 검증
-- [ ] 오탐 후보의 공통 OCR 패턴 정리
-- [ ] ranking weight 조정
+- [ ] 5경기 다운로드 완료 확인
+- [ ] dry-run으로 batch 명령 확인
+- [ ] `--skip-existing`로 전체 pipeline 실행
+- [ ] `outputs/batch_5/batch_summary.csv` 확인
+- [ ] 경기별 Top-5 contact sheet 확인
+- [ ] 실패 경기/실패 Goal 기록
 
 ### P0. Highlight Candidate 오탐 줄이기
 
@@ -172,6 +179,7 @@ ranked Top-5 Recall@30s: 2/2 = 1.000
 PROJECT_MASTER_PLAN.md
 YOLO_DATASET_TEST_GUIDE.md
 OCR_SCOREBOARD_TEST_GUIDE.md
+BATCH_5_MATCH_GUIDE.md
 docs/PHASE_1_VISION_OCR_PIPELINE.md
 docs/RESEARCH_ARCHITECTURE.md
 docs/TECHNICAL_SPEC.md
@@ -210,6 +218,7 @@ outputs/reports/chelsea_burnley_2015_score_change_eval_reparsed.csv
 outputs/reports/chelsea_burnley_2015_highlight_candidate_eval.csv
 outputs/reports/chelsea_burnley_2015_highlight_topk_eval.csv
 outputs/reports/chelsea_burnley_2015_highlight_topk_eval_details.csv
+outputs/batch_5/batch_summary.csv
 ```
 
 ## 5. 다음 커밋 후보
@@ -225,6 +234,9 @@ src/events/rank_highlight_candidates.py
 src/events/render_ranked_candidates.py
 src/evaluation/evaluate_score_changes.py
 src/evaluation/evaluate_topk_candidates.py
+src/pipeline/run_batch.py
+configs/batch_5_matches.yml
+BATCH_5_MATCH_GUIDE.md
 OCR_SCOREBOARD_TEST_GUIDE.md
 TODO.md
 PROJECT_MASTER_PLAN.md

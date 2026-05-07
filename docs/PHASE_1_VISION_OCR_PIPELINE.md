@@ -52,15 +52,17 @@ highlight_candidate fusion 완료
 highlight_candidate ranking 완료
 Top-K Recall 평가 완료
 Top-5 visual review contact sheet 생성 완료
+5경기 batch config 작성 완료
+batch runner 구현 완료
 ```
 
 현재 다음 작업:
 
 ```text
-Top-5 후보 육안 판정 반영
-ranking weight 2차 조정
-text_cue stopword/선수명 정규화
-5경기 확장
+5경기 batch 실행
+경기별 Top-5 Recall@30s 비교
+실패 사례 리뷰
+ranking/stopword 2차 조정
 ```
 
 Phase 1 기준 완성도:
@@ -76,6 +78,7 @@ Overlay/scorer fusion: 미완료
 Event fusion: 1차 완료
 Ranking/Top-K: 1차 완료
 Visual review: 1차 완료
+Batch runner: 1차 완료
 
 Phase 1 전체 기준: 약 80%
 ```

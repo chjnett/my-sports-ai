@@ -13,6 +13,8 @@
 | [PHASE_1_VISION_OCR_PIPELINE.md](PHASE_1_VISION_OCR_PIPELINE.md) | 1순위 실행 대상인 Vision/OCR 파이프라인 상세 |
 | [TECHNICAL_SPEC.md](TECHNICAL_SPEC.md) | GPU, 모델, 라이브러리, 인프라 기술 사양 |
 
+루트 문서 [BATCH_5_MATCH_GUIDE.md](../BATCH_5_MATCH_GUIDE.md)는 5경기 batch 검증 실행 절차를 담당합니다.
+
 ## 현재 연구 방향
 
 ```text
@@ -62,15 +64,17 @@ highlight candidate fusion
 highlight candidate ranking
 Top-K evaluation
 Top-5 visual review sheet
+5-match batch config
+batch runner
 ```
 
 다음 핵심:
 
 ```text
-Top-5 visual review decision
-ranking weight tuning
-text cue normalization
-5-match evaluation
+5-match download verification
+batch execution
+match-level Top-5 Recall@30s comparison
+failure case review
 ```
 
 ## 문서 작성 원칙
