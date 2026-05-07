@@ -76,6 +76,7 @@ text_cue 추출
 score_change + text_cue + replay event fusion
 highlight candidate ranking
 Top-K Recall 평가
+Top-5 visual review contact sheet
 ```
 
 현재 모델 산출물:
@@ -97,8 +98,8 @@ datasets/yolo_broadcast_graphics_scoreboard_replay
 다음 구현 대상:
 
 ```text
-Top-5 후보 시각 리뷰
-ranking weight 조정
+Top-5 후보 육안 판정 반영
+ranking weight 2차 조정
 text_cue stopword/선수명 정규화 강화
 5경기 확장 평가
 ```

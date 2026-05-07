@@ -36,10 +36,10 @@ Replay Grounding
 2026-05-07 기준:
 
 ```text
-전체 프로젝트: 약 45%
-Phase 1 Vision/OCR: 약 78%
+전체 프로젝트: 약 46%
+Phase 1 Vision/OCR: 약 80%
 Vision detector: 약 75%
-OCR MVP: 약 70%
+OCR MVP: 약 72%
 ```
 
 현재 완료된 핵심:
@@ -61,12 +61,13 @@ text cue extraction
 highlight candidate fusion
 highlight candidate ranking
 Top-K evaluation
+Top-5 visual review sheet
 ```
 
 다음 핵심:
 
 ```text
-Top-5 visual review
+Top-5 visual review decision
 ranking weight tuning
 text cue normalization
 5-match evaluation

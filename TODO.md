@@ -7,10 +7,10 @@
 2026-05-07 기준:
 
 ```text
-전체 프로젝트 기준: 약 45%
-Phase 1 Vision/OCR 기준: 약 78%
+전체 프로젝트 기준: 약 46%
+Phase 1 Vision/OCR 기준: 약 80%
 Vision detector 기준: 약 75%
-OCR MVP 기준: 약 70%
+OCR MVP 기준: 약 72%
 ```
 
 현재 완료된 큰 흐름:
@@ -29,6 +29,7 @@ text cue 추출
 highlight candidate fusion
 highlight candidate ranking
 Top-K 평가
+Top-5 visual review contact sheet 생성
 ```
 
 현재 타겟 경기:
@@ -121,13 +122,15 @@ ranked Top-5 Recall@30s: 2/2 = 1.000
 - [x] `src/events/rank_highlight_candidates.py` 구현
 - [x] `src/evaluation/evaluate_topk_candidates.py` 구현
 - [x] ranked Top-5 Recall@30s 2/2 확인
+- [x] `src/events/render_ranked_candidates.py` 구현
+- [x] Top-5 contact sheet 생성
 
 ## 2. 바로 다음 작업
 
 ### P0. Top-5 후보 시각 리뷰
 
-- [ ] ranked Top-5 후보의 source frame/contact sheet 생성
-- [ ] Goal 후보인지 아닌지 육안 검증
+- [x] ranked Top-5 후보의 source frame/contact sheet 생성
+- [ ] contact sheet를 열고 Goal 후보인지 아닌지 육안 검증
 - [ ] 오탐 후보의 공통 OCR 패턴 정리
 - [ ] ranking weight 조정
 
@@ -193,6 +196,7 @@ outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv
 outputs/events/chelsea_burnley_2015_text_cues.csv
 outputs/events/chelsea_burnley_2015_highlight_candidates.csv
 outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv
+outputs/reviews/chelsea_burnley_2015_highlight_top5/contact_sheet.jpg
 ```
 
 OCR:
@@ -218,6 +222,7 @@ src/ocr/smooth_scoreboard_ocr.py
 src/ocr/extract_text_cues.py
 src/events/fuse_highlight_candidates.py
 src/events/rank_highlight_candidates.py
+src/events/render_ranked_candidates.py
 src/evaluation/evaluate_score_changes.py
 src/evaluation/evaluate_topk_candidates.py
 OCR_SCOREBOARD_TEST_GUIDE.md

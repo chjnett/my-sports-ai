@@ -51,13 +51,14 @@ text_cue 추출 완료
 highlight_candidate fusion 완료
 highlight_candidate ranking 완료
 Top-K Recall 평가 완료
+Top-5 visual review contact sheet 생성 완료
 ```
 
 현재 다음 작업:
 
 ```text
-Top-5 후보 시각 리뷰
-ranking weight 조정
+Top-5 후보 육안 판정 반영
+ranking weight 2차 조정
 text_cue stopword/선수명 정규화
 5경기 확장
 ```
@@ -74,8 +75,9 @@ Goal evaluation: 1차 완료
 Overlay/scorer fusion: 미완료
 Event fusion: 1차 완료
 Ranking/Top-K: 1차 완료
+Visual review: 1차 완료
 
-Phase 1 전체 기준: 약 78%
+Phase 1 전체 기준: 약 80%
 ```
 
 ## 3. MVP 범위
@@ -819,6 +821,27 @@ Top-1 Recall@30s: 0.500
 Top-3 Recall@30s: 0.500
 Top-5 Recall@30s: 1.000
 Top-10 Recall@30s: 1.000
+```
+
+### 7.14 Top-K Visual Review
+
+랭킹된 후보를 사람이 빠르게 검수할 수 있도록 contact sheet로 렌더링합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.events.render_ranked_candidates \
+  --candidates outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv \
+  --output-root outputs/reviews/chelsea_burnley_2015_highlight_top5 \
+  --top-k 5 \
+  --context-sec=-10,0,10 \
+  --thumb-width 320 \
+  --cols 1
+```
+
+출력:
+
+```text
+outputs/reviews/chelsea_burnley_2015_highlight_top5/contact_sheet.jpg
+outputs/reviews/chelsea_burnley_2015_highlight_top5/images/
 ```
 
 ## 8. Phase 1 완료 기준

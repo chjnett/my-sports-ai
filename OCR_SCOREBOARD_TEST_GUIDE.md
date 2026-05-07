@@ -281,3 +281,36 @@ Top-10 Recall@30s: 2/2 = 1.000
 #1 candidate_0004: score_change + DROGBA cue, 첫 골 delta 11초
 #4 candidate_0047: VOKES cue, 두 번째 골 delta 12초
 ```
+
+## 10. Top-K Visual Review
+
+랭킹된 후보를 이미지 contact sheet로 렌더링합니다. 각 후보는 `-10초`, `0초`, `+10초` 프레임을 함께 보여줍니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.events.render_ranked_candidates `
+  --candidates outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv `
+  --output-root outputs/reviews/chelsea_burnley_2015_highlight_top5 `
+  --top-k 5 `
+  --context-sec=-10,0,10 `
+  --thumb-width 320 `
+  --cols 1
+```
+
+출력:
+
+```text
+outputs/reviews/chelsea_burnley_2015_highlight_top5/contact_sheet.jpg
+outputs/reviews/chelsea_burnley_2015_highlight_top5/images/
+```
+
+PowerShell에서 열기:
+
+```powershell
+Invoke-Item outputs\reviews\chelsea_burnley_2015_highlight_top5\contact_sheet.jpg
+```
+
+또는 폴더 열기:
+
+```powershell
+explorer outputs\reviews\chelsea_burnley_2015_highlight_top5
+```
