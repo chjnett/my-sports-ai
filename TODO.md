@@ -7,10 +7,10 @@
 2026-05-07 기준:
 
 ```text
-전체 프로젝트 기준: 약 43%
-Phase 1 Vision/OCR 기준: 약 75%
+전체 프로젝트 기준: 약 45%
+Phase 1 Vision/OCR 기준: 약 78%
 Vision detector 기준: 약 75%
-OCR MVP 기준: 약 65%
+OCR MVP 기준: 약 70%
 ```
 
 현재 완료된 큰 흐름:
@@ -27,6 +27,8 @@ OCR smoothing
 score_change vs Goal label 평가
 text cue 추출
 highlight candidate fusion
+highlight candidate ranking
+Top-K 평가
 ```
 
 현재 타겟 경기:
@@ -45,6 +47,7 @@ score_change events: 1
 Goal labels: 2
 scoreboard 단독 Recall@30s: 1/2 = 0.500
 fused highlight_candidate Recall@30s: 2/2 = 1.000
+ranked Top-5 Recall@30s: 2/2 = 1.000
 첫 골: label 13:10 -> score_change 13:21
 두 번째 골: 후반 80:21 근처 scoreboard OCR 단독으로는 1-1을 안정적으로 읽지 못함
 두 번째 골: 후반 80:31 VOKES text_cue로 검출
@@ -115,18 +118,27 @@ fused highlight_candidate Recall@30s: 2/2 = 1.000
 - [x] `src/events/fuse_highlight_candidates.py` 구현
 - [x] text_cue + score_change + replay event fusion 완료
 - [x] fused highlight_candidate Recall@30s 2/2 확인
+- [x] `src/events/rank_highlight_candidates.py` 구현
+- [x] `src/evaluation/evaluate_topk_candidates.py` 구현
+- [x] ranked Top-5 Recall@30s 2/2 확인
 
 ## 2. 바로 다음 작업
+
+### P0. Top-5 후보 시각 리뷰
+
+- [ ] ranked Top-5 후보의 source frame/contact sheet 생성
+- [ ] Goal 후보인지 아닌지 육안 검증
+- [ ] 오탐 후보의 공통 OCR 패턴 정리
+- [ ] ranking weight 조정
 
 ### P0. Highlight Candidate 오탐 줄이기
 
 - [ ] text_cue 후보 180개를 줄이는 stopword 정리
 - [ ] Chelsea/Burnley 관련 OCR 노이즈 정규화
-- [ ] 후보 50개를 evidence 기반으로 ranking
-- [ ] score_change 포함 후보에 높은 점수 부여
+- [ ] boost token을 수동 입력이 아닌 roster/player dictionary로 분리
 - [ ] text_cue 단독 후보는 replay_logo/시간 문맥으로 필터링
 
-### P0. Overlay OCR 확장
+### P1. Overlay OCR 확장
 
 - [ ] full frame 또는 lower-third 영역 crop 생성
 - [ ] overlay OCR 전용 CSV 생성
@@ -180,6 +192,7 @@ outputs/events/chelsea_burnley_2015_replay_events.csv
 outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv
 outputs/events/chelsea_burnley_2015_text_cues.csv
 outputs/events/chelsea_burnley_2015_highlight_candidates.csv
+outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv
 ```
 
 OCR:
@@ -191,6 +204,8 @@ outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv
 outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed_reparsed.csv
 outputs/reports/chelsea_burnley_2015_score_change_eval_reparsed.csv
 outputs/reports/chelsea_burnley_2015_highlight_candidate_eval.csv
+outputs/reports/chelsea_burnley_2015_highlight_topk_eval.csv
+outputs/reports/chelsea_burnley_2015_highlight_topk_eval_details.csv
 ```
 
 ## 5. 다음 커밋 후보
@@ -202,7 +217,9 @@ src/ocr/run_scoreboard_ocr.py
 src/ocr/smooth_scoreboard_ocr.py
 src/ocr/extract_text_cues.py
 src/events/fuse_highlight_candidates.py
+src/events/rank_highlight_candidates.py
 src/evaluation/evaluate_score_changes.py
+src/evaluation/evaluate_topk_candidates.py
 OCR_SCOREBOARD_TEST_GUIDE.md
 TODO.md
 PROJECT_MASTER_PLAN.md

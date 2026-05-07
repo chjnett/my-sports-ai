@@ -242,3 +242,42 @@ Recall@30s: 2/2 = 1.000
 첫 골: score_change, 13:10 -> 13:21, delta 11초
 두 번째 골: VOKES text_cue, 80:21 -> 80:31, delta 12초
 ```
+
+## 9. Highlight Candidate Ranking
+
+후보 50개를 evidence 기반 점수로 정렬합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.events.rank_highlight_candidates `
+  --input outputs/events/chelsea_burnley_2015_highlight_candidates.csv `
+  --output outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv `
+  --boost-tokens DROGBA,VOKES
+```
+
+Top-K 평가:
+
+```powershell
+docker compose run --rm soccernet-app python -m src.evaluation.evaluate_topk_candidates `
+  --labels outputs/reports/phase1a_events.csv `
+  --candidates outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv `
+  --output outputs/reports/chelsea_burnley_2015_highlight_topk_eval.csv `
+  --details-output outputs/reports/chelsea_burnley_2015_highlight_topk_eval_details.csv `
+  --top-k 1,3,5,10,20 `
+  --tolerances 5,10,30
+```
+
+현재 결과:
+
+```text
+Top-1 Recall@30s: 1/2 = 0.500
+Top-3 Recall@30s: 1/2 = 0.500
+Top-5 Recall@30s: 2/2 = 1.000
+Top-10 Recall@30s: 2/2 = 1.000
+```
+
+현재 rank 핵심:
+
+```text
+#1 candidate_0004: score_change + DROGBA cue, 첫 골 delta 11초
+#4 candidate_0047: VOKES cue, 두 번째 골 delta 12초
+```

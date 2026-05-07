@@ -49,14 +49,16 @@ strict score parser 적용 완료
 기존 OCR CSV 재파싱 도구 완료
 text_cue 추출 완료
 highlight_candidate fusion 완료
+highlight_candidate ranking 완료
+Top-K Recall 평가 완료
 ```
 
 현재 다음 작업:
 
 ```text
-highlight_candidate 오탐 줄이기
+Top-5 후보 시각 리뷰
+ranking weight 조정
 text_cue stopword/선수명 정규화
-candidate ranking
 5경기 확장
 ```
 
@@ -71,8 +73,9 @@ OCR smoothing: 1차 완료
 Goal evaluation: 1차 완료
 Overlay/scorer fusion: 미완료
 Event fusion: 1차 완료
+Ranking/Top-K: 1차 완료
 
-Phase 1 전체 기준: 약 75%
+Phase 1 전체 기준: 약 78%
 ```
 
 ## 3. MVP 범위
@@ -784,6 +787,38 @@ highlight candidates: 50
 Recall@30s: 2/2 = 1.000
 첫 골: score_change, delta 11초
 두 번째 골: VOKES text_cue, delta 12초
+```
+
+### 7.13 Candidate Ranking / Top-K
+
+후보 50개를 evidence 기반 점수로 정렬합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.events.rank_highlight_candidates \
+  --input outputs/events/chelsea_burnley_2015_highlight_candidates.csv \
+  --output outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv \
+  --boost-tokens DROGBA,VOKES
+```
+
+Top-K 평가:
+
+```bash
+docker compose run --rm soccernet-app python -m src.evaluation.evaluate_topk_candidates \
+  --labels outputs/reports/phase1a_events.csv \
+  --candidates outputs/events/chelsea_burnley_2015_highlight_candidates_ranked.csv \
+  --output outputs/reports/chelsea_burnley_2015_highlight_topk_eval.csv \
+  --details-output outputs/reports/chelsea_burnley_2015_highlight_topk_eval_details.csv \
+  --top-k 1,3,5,10,20 \
+  --tolerances 5,10,30
+```
+
+현재 결과:
+
+```text
+Top-1 Recall@30s: 0.500
+Top-3 Recall@30s: 0.500
+Top-5 Recall@30s: 1.000
+Top-10 Recall@30s: 1.000
 ```
 
 ## 8. Phase 1 완료 기준
