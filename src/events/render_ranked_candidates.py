@@ -35,6 +35,22 @@ def parse_offsets(raw: str) -> list[int]:
     return offsets or [0]
 
 
+def format_clock(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    minute = seconds // 60
+    second = seconds % 60
+    return f"{minute:02d}:{second:02d}"
+
+
+def match_second(half: str, half_timestamp_sec: float) -> float:
+    return half_timestamp_sec if str(half).strip() == "1" else 45 * 60 + half_timestamp_sec
+
+
+def format_time_label(half: str, half_timestamp_sec: float) -> str:
+    match_ts = match_second(half, half_timestamp_sec)
+    return f"video={half_timestamp_sec:.1f}s  match={format_clock(match_ts)}"
+
+
 def load_candidates(path: Path, top_k: int) -> list[dict[str, str]]:
     if not path.exists():
         raise SystemExit(f"Candidate CSV not found: {path}")
@@ -77,6 +93,7 @@ def make_blank(width: int, height: int, text: str) -> np.ndarray:
 
 def render_candidate(candidate: dict[str, str], offsets: list[int], thumb_width: int) -> np.ndarray:
     base_ts = parse_float(candidate.get("timestamp_sec"))
+    half = candidate.get("half", "")
     source_image = candidate.get("source_image", "")
     images: list[np.ndarray] = []
 
@@ -86,7 +103,7 @@ def render_candidate(candidate: dict[str, str], offsets: list[int], thumb_width:
         image = cv2.imread(str(path))
         if image is None:
             image = make_blank(1280, 720, f"missing {path.name}")
-        image = add_header(image, [f"offset {offset:+d}s  t={timestamp:.1f}s"])
+        image = add_header(image, [f"offset {offset:+d}s  {format_time_label(half, timestamp)}"])
         images.append(resize_to_width(image, thumb_width))
 
     tile_h = max(image.shape[0] for image in images)
@@ -97,7 +114,7 @@ def render_candidate(candidate: dict[str, str], offsets: list[int], thumb_width:
 
     meta_lines = [
         f"rank #{candidate.get('rank')}  score={candidate.get('rank_score')}  {candidate.get('candidate_id')}",
-        f"half={candidate.get('half')}  t={candidate.get('timestamp_sec')}  evidence={candidate.get('evidence_types')}",
+        f"half={half}  {format_time_label(half, base_ts)}  evidence={candidate.get('evidence_types')}",
     ]
     cue_text = candidate.get("cue_texts", "")
     if cue_text:

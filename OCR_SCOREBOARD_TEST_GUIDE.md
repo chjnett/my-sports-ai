@@ -285,6 +285,13 @@ Top-10 Recall@30s: 2/2 = 1.000
 ## 10. Top-K Visual Review
 
 랭킹된 후보를 이미지 contact sheet로 렌더링합니다. 각 후보는 `-10초`, `0초`, `+10초` 프레임을 함께 보여줍니다.
+이미지 안의 시간은 `video=...s`와 `match=MM:SS`를 함께 표시합니다.
+
+```text
+video: 전반/후반 개별 영상 내부 시간
+match: 90분 경기 기준 시간
+예: half 2, video=2133s -> match=80:33
+```
 
 ```powershell
 docker compose run --rm soccernet-app python -m src.events.render_ranked_candidates `
