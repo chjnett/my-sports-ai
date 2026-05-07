@@ -2,6 +2,40 @@
 
 이 문서는 `my-sports-ai` 프로젝트의 완료 작업과 다음 작업을 체크리스트로 관리하기 위한 문서입니다.
 
+## 0. 현재 완성도 판단
+
+2026-05-07 기준:
+
+```text
+전체 프로젝트 기준: 약 35%
+Phase 1 Vision/OCR 기준: 약 55%
+Vision detector 기준: 약 75%
+```
+
+현재 완료된 큰 축:
+
+```text
+데이터 다운로드/검증
+라벨 파싱
+1fps 프레임 샘플링
+scoreboard YOLO11s detector
+replay_logo 후보 추출 및 라벨 반영
+scoreboard + replay_logo YOLO11s 재학습
+replay_transition_logo / replay_segment 이벤트 CSV 생성
+```
+
+남은 큰 축:
+
+```text
+scoreboard crop 생성
+PaddleOCR 실행
+score/clock parsing
+OCR smoothing
+Goal label evaluation
+highlight candidate 생성
+clip/report 생성
+```
+
 ## 1. 완료한 작업
 
 ### 프로젝트 기본 세팅
@@ -81,15 +115,15 @@ YOLO_DATASET_TEST_GUIDE.md
 
 우선순위:
 
-1. 타겟 경기 프레임 개수 확인
-2. YOLO 학습 데이터셋 폴더 구조 생성
-3. 라벨링용 대표 프레임 100장 추출
-4. 자동 라벨 초안 생성
-5. 리뷰 이미지 확인 및 필요한 라벨만 수정
-6. YOLO11n smoke training
-7. YOLO11s main training
-8. 타겟 경기 inference
-9. detection CSV 확인
+1. scoreboard + replay_logo 모델로 타겟 경기 전체 재추론
+2. `replay_logo` 검출 시간대 확인
+3. replay_logo 검출 review 이미지 생성
+4. replay transition timestamp를 이벤트 CSV로 정리
+5. scoreboard bbox 기반 crop 생성
+6. PaddleOCR scoreboard OCR 실행
+7. score/clock parsing 및 smoothing
+8. SoccerNet Goal label 대비 score_change 평가
+9. 5경기 이상으로 확장
 
 ### 현재 타겟 경기
 
@@ -113,34 +147,40 @@ live play
 
 ### 지금 해야 할 것
 
-1. 전체 프레임 샘플링이 완료됐는지 확인합니다.
+1. scoreboard + replay_logo 전체 추론을 실행합니다.
 
 ```powershell
-(Get-ChildItem "outputs\frames\england_epl\2014-2015\2015-02-21 - 18-00 Chelsea 1 - 1 Burnley\half_1" -Filter *.jpg).Count
-(Get-ChildItem "outputs\frames\england_epl\2014-2015\2015-02-21 - 18-00 Chelsea 1 - 1 Burnley\half_2" -Filter *.jpg).Count
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.vision.detect_graphics `
+  --model models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt `
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" `
+  --output outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv `
+  --imgsz 1280 `
+  --conf 0.25
 ```
 
-2. 대표 프레임 몇 장을 눈으로 확인합니다.
+2. replay_logo 검출 결과를 확인합니다.
+
+```powershell
+Import-Csv outputs\detections\chelsea_burnley_2015_scoreboard_replay_full.csv |
+  Where-Object { $_.class_name -eq "replay_logo" } |
+  Select-Object -First 30
+```
+
+3. 검출 시간대가 strict 후보 시간대와 가까운지 봅니다.
 
 ```text
-half_1/0000000000.jpg
-half_1/0000060000.jpg
-half_1/0000600000.jpg
-half_2/0000000000.jpg
-half_2/0000600000.jpg
+expected replay_logo examples:
+half_1 408s
+half_1 1523s
+half_2 187s
+half_2 305s
+half_2 463s
+half_2 847s
+half_2 1032s
+half_2 1999s
 ```
 
-3. 아래 세 영역의 대략적인 좌표를 잡습니다.
-
-```text
-scoreboard  : 좌상단 또는 상단의 시간/점수 영역
-overlay     : 하단 또는 중앙 하단의 선수명/카드/교체/VAR 자막 영역
-replay_logo : 중앙 프리미어리그 전환 마크가 뜨는 영역
-```
-
-4. 30경기 batch 분석을 위해 YOLO11s detector 학습 데이터셋을 준비합니다.
-5. 자동 라벨 초안을 생성하고 리뷰 이미지로 품질을 확인합니다.
-6. 수동 crop은 모델 결과 검증용 baseline으로 유지합니다.
+4. 검출이 괜찮으면 replay transition event CSV 생성기로 넘어갑니다.
 
 ### Phase 1B: 수동 Crop Config + Crop 적용기
 
@@ -205,7 +245,7 @@ outputs/reports/crop_summary.csv
 - [x] review 이미지 생성
 - [ ] review 이미지에서 scoreboard bbox 품질 확인
 - [ ] overlay 라벨링 전략 결정
-- [ ] replay_logo 후보 프레임 추출 전략 구현
+- [x] replay_logo 후보 프레임 추출 전략 구현
 - [ ] YOLO format export 방식 결정
 - [x] train/val split 구성
 - [x] `src/vision/prepare_yolo_dataset.py` 구현
@@ -259,7 +299,26 @@ replay_logo bbox 20개 이상
 - [x] 전체 inference 결과 요약
 - [ ] 수동 crop 결과와 detector bbox 비교
 - [ ] scoreboard detection 기반 crop/OCR 입력 생성
-- [ ] replay_logo 후보 프레임 추출기 구현
+- [x] replay_logo 후보 프레임 추출기 구현
+- [x] `src/vision/extract_replay_logo_candidates.py` 구현
+- [x] 타겟 경기 replay_logo 후보 추출 실행
+- [x] replay_logo 후보 contact sheet 생성
+- [x] replay_logo 후보 화면비율/로고색상 필터 추가
+- [x] strict replay_logo 후보 12장 추출
+- [x] strict replay_logo 후보 12장 리뷰
+- [x] 실제 replay_logo 프레임만 YOLO 라벨로 반영
+- [x] `src/vision/add_replay_logo_labels.py` 구현
+- [x] `datasets/yolo_broadcast_graphics_replay_logo` 생성
+- [x] `datasets/yolo_broadcast_graphics_scoreboard_replay` 생성
+- [x] scoreboard + replay_logo YOLO11s 재학습
+- [x] `models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt` 저장
+- [x] scoreboard + replay_logo 전체 프레임 재추론
+- [x] replay_logo 검출 시간대 확인
+- [x] `src/vision/build_replay_events.py` 구현
+- [x] replay_transition_logo 이벤트 CSV 생성
+- [x] replay_segment 후보 CSV 생성
+- [ ] replay_logo 검출 결과 review 이미지 생성
+- [ ] replay_segment 후보 실제 영상 구간 검증
 
 YOLO11n smoke training 결과:
 
@@ -356,6 +415,114 @@ CSV: outputs/detections/chelsea_burnley_2015_yolo11s_full.csv
 ```text
 scoreboard detector는 타겟 경기 전체 프레임에서 안정적으로 동작.
 스코어보드가 대부분 프레임에서 유지되므로 replay 판단은 scoreboard disappearance가 아니라 Premier League center transition logo 기준으로 진행.
+```
+
+Replay logo 후보 추출 결과:
+
+```text
+구현 파일: src/vision/extract_replay_logo_candidates.py
+입력 프레임: 5400
+선택 후보: 100
+CSV: outputs/replay_logo_candidates/chelsea_burnley_2015/candidates.csv
+리뷰 이미지: outputs/replay_logo_candidates/chelsea_burnley_2015/review
+contact sheet: outputs/replay_logo_candidates/chelsea_burnley_2015/contact_sheet.jpg
+```
+
+해석:
+
+```text
+상위 후보에는 Premier League 중앙 전환 로고가 잘 포함됨.
+뒤쪽 후보에는 선수/벤치/광고판 오탐이 섞임.
+다음 단계는 상위 20-40장부터 리뷰하고 실제 로고 프레임만 replay_logo class 라벨로 반영.
+```
+
+Replay logo strict 후보 추출 결과:
+
+```text
+추가 필터:
+- box_area_ratio
+- box_aspect_ratio
+- logo_color_ratio
+- magenta_ratio
+- center_distance
+
+명령 기준:
+- min_score: 5.68
+- min_box_area_ratio: 0.05
+- max_box_area_ratio: 0.38
+- max_center_distance: 0.45
+- min_logo_color_ratio: 0.06
+- min_magenta_ratio: 0.004
+
+선택 후보: 12
+대표 box_area_ratio: 0.346481
+strict CSV: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/candidates.csv
+strict contact sheet: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/contact_sheet.jpg
+```
+
+Replay logo 라벨 반영 결과:
+
+```text
+구현 파일: src/vision/add_replay_logo_labels.py
+입력 CSV: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/candidates.csv
+replay_logo labels: 12
+replay_logo dataset: datasets/yolo_broadcast_graphics_replay_logo
+merged scoreboard+replay dataset: datasets/yolo_broadcast_graphics_scoreboard_replay
+merged total images: 369
+merged total labels: 369
+merged data yaml: datasets/yolo_broadcast_graphics_scoreboard_replay/data.yaml
+```
+
+Scoreboard + replay_logo 재학습 결과:
+
+```text
+학습 epoch: 30
+모델: YOLO11s fine-tune
+학습 데이터셋: datasets/yolo_broadcast_graphics_scoreboard_replay
+저장 모델: models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+validation note: 현재 val set에는 scoreboard만 있어 replay_logo 지표는 표시되지 않음
+scoreboard final precision: 0.997
+scoreboard final recall: 1.000
+scoreboard final mAP50: 0.995
+scoreboard final mAP50-95: 0.972
+```
+
+Scoreboard + replay_logo 전체 추론 결과:
+
+```text
+입력 CSV: outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+전체 검출 수: 5393
+scoreboard 검출 수: 5380
+replay_logo 검출 수: 13
+replay_logo unique frames: 10
+replay_logo confidence min: 0.253
+replay_logo confidence avg: 0.262
+replay_logo confidence max: 0.272
+```
+
+해석:
+
+```text
+replay_logo는 confidence가 낮지만 strict 후보 시간대와 정확히 겹침.
+학습 샘플이 12장뿐이므로 replay_logo 이벤트화 기준은 min_conf=0.25로 사용.
+```
+
+Replay event 생성 결과:
+
+```text
+구현 파일: src/vision/build_replay_events.py
+입력: outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+출력: outputs/events/chelsea_burnley_2015_replay_events.csv
+min_conf: 0.25
+transition events: 10
+replay segment candidates: 2
+```
+
+검출된 replay_logo timestamp:
+
+```text
+half_1: 408, 1523, 1747
+half_2: 305, 379, 463, 847, 1032, 1630, 1999
 ```
 
 ### Phase 1C: OCR 실행

@@ -31,6 +31,38 @@ overlay
 replay_logo
 ```
 
+현재 구현 상태:
+
+```text
+Phase 1A frame sampling 완료
+scoreboard YOLO11s detector 학습 완료
+scoreboard full inference 완료
+replay_logo strict 후보 12장 라벨 반영 완료
+scoreboard + replay_logo YOLO11s 재학습 완료
+replay_transition_logo / replay_segment 이벤트 CSV 생성 완료
+```
+
+현재 다음 작업:
+
+```text
+replay_logo 검출 review 이미지 생성
+replay_segment 후보 실제 구간 검증
+scoreboard crop/OCR 입력 생성
+```
+
+Phase 1 기준 완성도:
+
+```text
+Frame sampling: 완료
+Vision detector: 1차 완료
+Replay logo event: 1차 완료
+OCR execution: 미완료
+OCR smoothing: 미완료
+Goal evaluation: 미완료
+
+Phase 1 전체 기준: 약 55%
+```
+
 ## 3. MVP 범위
 
 ### 3.1 Frame Sampling
@@ -278,7 +310,40 @@ MVP가 동작한 뒤 아래 기능을 추가합니다.
 ```text
 datasets/yolo_broadcast_graphics/
 models/yolo/broadcast_graphics_yolo11s.pt
+models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
 outputs/detections/{match_id}.json
+```
+
+현재 완료된 detector 산출물:
+
+```text
+scoreboard model:
+  models/yolo/broadcast_graphics_yolo11s.pt
+
+scoreboard + replay_logo model:
+  models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+
+scoreboard full inference:
+  outputs/detections/chelsea_burnley_2015_yolo11s_full.csv
+
+다음 inference 대상:
+  outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+```
+
+현재 replay event 산출물:
+
+```text
+detection csv:
+  outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+
+replay event csv:
+  outputs/events/chelsea_burnley_2015_replay_events.csv
+
+transition events:
+  10
+
+replay segment candidates:
+  2
 ```
 
 학습 데이터 최소 목표:
@@ -355,14 +420,24 @@ src/phase1a.py
 
 ```text
 src/ocr/crop_config.py
-src/vision/prepare_yolo_dataset.py
-src/vision/train_detector.py
-src/vision/detect_graphics.py
-src/vision/replay_logo.py
 src/ocr/run_ocr.py
 src/ocr/clean_ocr.py
 src/ocr/smoothing.py
 src/evaluation/metrics.py
+```
+
+이미 구현한 vision 파일:
+
+```text
+src/vision/prepare_yolo_dataset.py
+src/vision/auto_label_graphics.py
+src/vision/train_detector.py
+src/vision/detect_graphics.py
+src/vision/summarize_detections.py
+src/vision/pseudo_label_graphics.py
+src/vision/merge_yolo_datasets.py
+src/vision/extract_replay_logo_candidates.py
+src/vision/add_replay_logo_labels.py
 ```
 
 출력 폴더:
@@ -436,6 +511,63 @@ outputs/frames/{match_id}/half_2/
 ```
 
 전체 영상을 처리할 때는 `--max-seconds`를 제거합니다.
+
+### 7.4 Scoreboard + Replay Logo 전체 추론
+
+현재 재학습된 모델:
+
+```text
+models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+```
+
+실행 명령:
+
+```bash
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.vision.detect_graphics \
+  --model models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt \
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" \
+  --output outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv \
+  --imgsz 1280 \
+  --conf 0.25
+```
+
+replay_logo 검출 확인:
+
+```powershell
+Import-Csv outputs\detections\chelsea_burnley_2015_scoreboard_replay_full.csv |
+  Where-Object { $_.class_name -eq "replay_logo" } |
+  Select-Object -First 30
+```
+
+완료 기준:
+
+```text
+replay_logo 검출이 Premier League 중앙 전환 로고 timestamp 근처에 집중됨
+scoreboard 검출 성능이 기존 모델 대비 크게 흔들리지 않음
+replay_transition_logo 이벤트 후보 CSV 생성 준비 완료
+```
+
+### 7.5 Replay Event CSV 생성
+
+`replay_logo` 검출 confidence는 낮게 나오지만 strict 후보 timestamp와 일치하므로 `min-conf 0.25`를 사용합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.vision.build_replay_events \
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv \
+  --output outputs/events/chelsea_burnley_2015_replay_events.csv \
+  --min-conf 0.25 \
+  --merge-gap-sec 3 \
+  --min-segment-sec 4 \
+  --max-segment-sec 90
+```
+
+현재 결과:
+
+```text
+input replay detections: 13
+transition events: 10
+replay segments: 2
+```
 
 ## 8. Phase 1 완료 기준
 

@@ -30,6 +30,36 @@ Action Spotting
 Replay Grounding
 ```
 
+## 현재 완성도
+
+2026-05-07 기준:
+
+```text
+전체 프로젝트: 약 35%
+Phase 1 Vision/OCR: 약 55%
+Vision detector: 약 75%
+```
+
+현재 완료된 핵심:
+
+```text
+1fps frame sampling
+scoreboard YOLO11s detector
+replay_logo strict candidate extraction
+scoreboard + replay_logo YOLO11s fine-tuning
+replay_transition_logo / replay_segment event CSV
+```
+
+다음 핵심:
+
+```text
+scoreboard crop generation
+PaddleOCR execution
+score/clock parsing
+temporal smoothing
+Goal label evaluation
+```
+
 ## 문서 작성 원칙
 
 * `README.md`는 프로젝트 소개와 빠른 시작을 담당합니다.

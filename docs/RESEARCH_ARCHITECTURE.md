@@ -64,6 +64,64 @@ flowchart TD
     K --> M["Explanation Report"]
 ```
 
+## 4.1 현재 완성도 판단
+
+2026-05-07 기준 현재 구현은 전체 아키텍처 중 **Vision Detection 기반 구축 단계가 완료권**에 들어왔고, OCR/Event Graph/Highlight 생성은 다음 단계입니다.
+
+전체 완성도 추정:
+
+```text
+전체 프로젝트 기준: 약 35%
+Phase 1 Vision/OCR 기준: 약 55%
+Vision detector 기준: 약 75%
+OCR/Event Graph/Highlight 기준: 아직 초기 단계
+```
+
+모듈별 완성도:
+
+| 모듈 | 상태 | 완성도 | 근거 |
+|---|---:|---:|---|
+| 데이터 다운로드/GUI | 완료 | 90% | SoccerNet GUI, 라벨/영상 다운로드 흐름 구현 |
+| 라벨 파싱 | 완료 | 90% | Goal/Card/Substitution CSV 추출 가능 |
+| 프레임 샘플링 | 완료 | 90% | 타겟 경기 5400프레임 처리 완료 |
+| Scoreboard detector | 완료권 | 85% | YOLO11s 학습 및 전체 프레임 안정 검출 |
+| Replay logo detector | 1차 완료 | 65% | strict 후보 12장 학습, 전체 추론에서 13개 검출 |
+| Replay event 생성 | 1차 완료 | 55% | `replay_transition_logo`, `replay_segment` CSV 생성 |
+| Overlay detector | 미완료 | 10% | class 정의만 존재, 라벨/학습 미진행 |
+| OCR 실행 | 미완료 | 10% | PaddleOCR 환경은 준비됐으나 crop/OCR 파이프라인 미구현 |
+| OCR smoothing | 미완료 | 0% | 아직 구현 전 |
+| Event Graph | 설계 단계 | 15% | replay event 일부만 CSV로 생성 |
+| Highlight candidate/clip | 미완료 | 0% | 아직 구현 전 |
+| 논문 실험 패키지 | 미완료 | 0% | 평가표/ablation/사례 분석 전 |
+
+현재까지 확보한 핵심 산출물:
+
+```text
+models/yolo/broadcast_graphics_yolo11s.pt
+models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+outputs/detections/chelsea_burnley_2015_yolo11s_full.csv
+outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+outputs/events/chelsea_burnley_2015_replay_events.csv
+```
+
+현재까지 증명된 것:
+
+```text
+1. SoccerNet 경기 영상에서 1fps 프레임 추출 가능
+2. scoreboard는 YOLO11s로 안정적으로 탐지 가능
+3. Premier League 중앙 전환 로고는 후보 추출 + 소량 라벨로 검출 가능
+4. replay_logo 검출을 replay_transition_logo 이벤트로 변환 가능
+```
+
+아직 증명해야 할 것:
+
+```text
+1. scoreboard crop에서 PaddleOCR로 시간/점수/팀명을 안정적으로 읽을 수 있는가
+2. OCR smoothing으로 score_change를 안정적으로 찾을 수 있는가
+3. score_change와 replay_segment가 Goal label 근처에서 의미 있게 결합되는가
+4. 1경기 결과가 5경기, 30경기로 확장되는가
+```
+
 ## 5. 데이터 흐름
 
 ```mermaid

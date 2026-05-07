@@ -246,7 +246,149 @@ VAR 문구
 
 마크 주변을 약간 여유 있게 잡습니다. 리플레이 장면 자체가 아니라 전환 로고만 잡습니다.
 
-## 9. 라벨링 도구
+## 9. Replay Logo 후보 추출
+
+리플레이 전환 로고는 전체 프레임에서 바로 라벨링하지 않고, 후보 프레임만 먼저 추출합니다.
+
+실행 명령:
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.extract_replay_logo_candidates `
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" `
+  --output-root outputs/replay_logo_candidates/chelsea_burnley_2015 `
+  --top-k 100 `
+  --min-score 0.25 `
+  --copy-originals
+```
+
+현재 실행 결과:
+
+```text
+frames scanned: 5400
+selected candidates: 100
+csv: outputs/replay_logo_candidates/chelsea_burnley_2015/candidates.csv
+review images: outputs/replay_logo_candidates/chelsea_burnley_2015/review
+contact sheet: outputs/replay_logo_candidates/chelsea_burnley_2015/contact_sheet.jpg
+```
+
+리뷰 방법:
+
+```powershell
+explorer "C:\chun\workspace\my-sports-ai\outputs\replay_logo_candidates\chelsea_burnley_2015\review"
+```
+
+또는 contact sheet를 먼저 확인합니다.
+
+```text
+outputs/replay_logo_candidates/chelsea_burnley_2015/contact_sheet.jpg
+```
+
+확인 기준:
+
+```text
+좋음:
+  Premier League 로고가 화면 중앙에 큼직하게 보임
+  리플레이 시작/종료 전환 그래픽임
+  로고 전체가 초록 박스 안에 들어감
+
+나쁨:
+  선수 몸통/유니폼을 잡음
+  벤치나 감독을 잡음
+  광고판이나 관중석을 잡음
+  리플레이 장면 자체지만 중앙 로고가 없음
+```
+
+현재 후보의 특성:
+
+```text
+상위권 후보에는 실제 Premier League 중앙 전환 로고가 잘 포함됨.
+뒤쪽 후보에는 선수/벤치 오탐이 섞임.
+우선 top 20-40 이미지만 리뷰하고, 실제 로고 프레임만 replay_logo 라벨로 사용.
+```
+
+후보가 많이 섞이면 아래처럼 더 강한 조건을 사용합니다.
+이 조건은 화면에서 후보 박스가 차지하는 비율, 로고 색상, 중심 위치, score를 함께 봅니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.extract_replay_logo_candidates `
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" `
+  --output-root outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo `
+  --top-k 30 `
+  --min-score 5.68 `
+  --min-box-area-ratio 0.05 `
+  --max-box-area-ratio 0.38 `
+  --max-center-distance 0.45 `
+  --min-logo-color-ratio 0.06 `
+  --min-magenta-ratio 0.004 `
+  --copy-originals
+```
+
+현재 strict 실행 결과:
+
+```text
+frames scanned: 5400
+selected candidates: 12
+대표 box_area_ratio: 0.346481
+csv: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/candidates.csv
+review images: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/review
+contact sheet: outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/contact_sheet.jpg
+```
+
+해석:
+
+```text
+이 경기의 큰 Premier League 전환 로고는 전체 화면의 약 34.6% bbox 영역을 차지함.
+strict 후보 12장은 replay_logo 라벨링의 우선 대상.
+더 작은 로고까지 포함하려면 min_score를 낮추거나 min_box_area_ratio를 낮춰 재실행.
+```
+
+다음 데이터셋 반영 기준:
+
+```text
+class id: 2
+class name: replay_logo
+source: outputs/replay_logo_candidates/chelsea_burnley_2015/raw 또는 원본 frame path
+label bbox: candidates.csv의 x1,y1,x2,y2를 기준으로 필요 시 수동 보정
+```
+
+strict 후보가 좋으면 아래 명령으로 replay_logo 라벨 데이터셋을 생성합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.add_replay_logo_labels `
+  --candidates outputs/replay_logo_candidates/chelsea_burnley_2015_strict_logo/candidates.csv `
+  --dataset-root datasets/yolo_broadcast_graphics_replay_logo `
+  --split train `
+  --overwrite
+```
+
+현재 생성 결과:
+
+```text
+written replay_logo labels: 12
+dataset: datasets/yolo_broadcast_graphics_replay_logo
+```
+
+기존 scoreboard 데이터셋과 replay_logo 데이터셋을 병합합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.merge_yolo_datasets `
+  --sources datasets/yolo_broadcast_graphics_merged datasets/yolo_broadcast_graphics_replay_logo `
+  --output-root datasets/yolo_broadcast_graphics_scoreboard_replay `
+  --pseudo-to-train-only `
+  --overwrite
+```
+
+현재 병합 결과:
+
+```text
+scoreboard train images: 339
+scoreboard val images: 18
+replay_logo train images: 12
+merged total images: 369
+merged data yaml: datasets/yolo_broadcast_graphics_scoreboard_replay/data.yaml
+```
+
+## 10. 라벨링 도구
 
 추천 도구:
 
@@ -273,7 +415,7 @@ class_id x_center y_center width height
 2 0.5000 0.4200 0.2800 0.3000
 ```
 
-## 10. train/val 분리
+## 11. train/val 분리
 
 처음에는 간단히 80:20으로 나눕니다.
 
@@ -289,7 +431,7 @@ images/train/frame_0001.jpg
 labels/train/frame_0001.txt
 ```
 
-## 11. Docker GPU 환경 준비
+## 12. Docker GPU 환경 준비
 
 이미 추가된 파일:
 
@@ -327,7 +469,7 @@ Python GPU 확인:
 docker compose -f compose.gpu.yml run --rm vision-gpu python3 -c "import torch; print(torch.cuda.is_available()); import paddle; print(paddle.__version__)"
 ```
 
-## 12. YOLO11n Smoke Training
+## 13. YOLO11n Smoke Training
 
 데이터셋이 준비되면 먼저 가벼운 YOLO11n으로 학습 파이프라인만 검증합니다.
 
@@ -375,7 +517,7 @@ saved model: models/yolo/broadcast_graphics_yolo11n.pt
 따라서 다음 단계는 훈련 지표가 아니라 실제 타겟 경기 프레임 inference 결과를 확인하는 것입니다.
 ```
 
-## 13. YOLO11n Smoke Inference
+## 14. YOLO11n Smoke Inference
 
 학습된 YOLO11n 모델로 타겟 경기 일부 프레임에 먼저 inference를 실행합니다.
 
@@ -424,7 +566,7 @@ confidence 0.70 이상은 안전한 pseudo-label 후보로 사용.
 confidence 0.50-0.70은 추가 확장 후보지만 먼저 리뷰 이미지 확인 후 사용.
 ```
 
-## 14. Pseudo-Label 확장 전략
+## 15. Pseudo-Label 확장 전략
 
 30경기 전체를 수동 라벨링하지 않기 위해 아래 흐름으로 자동 확장합니다.
 
@@ -513,7 +655,7 @@ replay_logo:
   중앙 PL 로고 후보만 별도 라벨링/학습
 ```
 
-## 15. YOLO11s Main Training
+## 16. YOLO11s Main Training
 
 smoke test가 통과하면 YOLO11s로 학습합니다.
 
@@ -553,7 +695,115 @@ mAP50-95: 0.972
 saved model: models/yolo/broadcast_graphics_yolo11s.pt
 ```
 
-## 16. 타겟 경기 추론
+scoreboard + replay_logo 재학습 명령:
+
+```powershell
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.vision.train_detector `
+  --model models/yolo/broadcast_graphics_yolo11s.pt `
+  --data datasets/yolo_broadcast_graphics_scoreboard_replay/data.yaml `
+  --epochs 30 `
+  --imgsz 1280 `
+  --batch 8 `
+  --project models/yolo/runs `
+  --name broadcast_graphics_yolo11s_scoreboard_replay `
+  --device 0 `
+  --output-model models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+```
+
+현재 재학습 완료 결과:
+
+```text
+epochs: 30
+model: YOLO11s fine-tune
+dataset: datasets/yolo_broadcast_graphics_scoreboard_replay
+saved model: models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
+scoreboard precision: 0.997
+scoreboard recall: 1.000
+scoreboard mAP50: 0.995
+scoreboard mAP50-95: 0.972
+```
+
+주의:
+
+```text
+현재 validation set에는 replay_logo 라벨이 없어서 replay_logo 지표는 표시되지 않습니다.
+따라서 replay_logo 검증은 전체 프레임 inference 결과에서 class_name=replay_logo가 실제 PL 전환 시점에 나오는지 확인합니다.
+```
+
+scoreboard + replay_logo 전체 추론 명령:
+
+```powershell
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.vision.detect_graphics `
+  --model models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt `
+  --frames-root "outputs/frames/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" `
+  --output outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv `
+  --imgsz 1280 `
+  --conf 0.25
+```
+
+replay_logo만 확인:
+
+```powershell
+Import-Csv outputs\detections\chelsea_burnley_2015_scoreboard_replay_full.csv |
+  Where-Object { $_.class_name -eq "replay_logo" } |
+  Select-Object -First 30
+```
+
+현재 전체 추론 결과:
+
+```text
+detection csv: outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
+total detections: 5393
+scoreboard detections: 5380
+replay_logo detections: 13
+replay_logo unique frames: 10
+replay_logo confidence min: 0.253
+replay_logo confidence avg: 0.262
+replay_logo confidence max: 0.272
+```
+
+주의:
+
+```text
+replay_logo는 학습 샘플이 12장이라 confidence가 낮게 출력됩니다.
+하지만 검출 timestamp가 strict 후보 timestamp와 정확히 겹치므로 이벤트화 기준은 min_conf=0.25를 사용합니다.
+```
+
+replay_logo 검출을 이벤트 CSV로 변환합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.vision.build_replay_events `
+  --detections outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv `
+  --output outputs/events/chelsea_burnley_2015_replay_events.csv `
+  --min-conf 0.25 `
+  --merge-gap-sec 3 `
+  --min-segment-sec 4 `
+  --max-segment-sec 90
+```
+
+현재 이벤트 생성 결과:
+
+```text
+input replay detections: 13
+transition events: 10
+replay segments: 2
+output: outputs/events/chelsea_burnley_2015_replay_events.csv
+```
+
+검출된 transition timestamp:
+
+```text
+half_1: 408, 1523, 1747
+half_2: 305, 379, 463, 847, 1032, 1630, 1999
+```
+
+CSV 확인:
+
+```powershell
+Get-Content outputs\events\chelsea_burnley_2015_replay_events.csv
+```
+
+## 17. 타겟 경기 추론
 
 학습된 모델로 타겟 경기 프레임에 대해 inference를 실행합니다.
 
@@ -613,7 +863,7 @@ scoreboard detector는 실사용 가능한 수준으로 안정화됨.
 다음 단계는 Premier League center transition logo 후보 프레임 추출.
 ```
 
-## 17. 결과 검증
+## 18. 결과 검증
 
 확인할 것:
 
@@ -632,7 +882,7 @@ Get-Content outputs\detections\chelsea_burnley_2015.csv -First 20
 
 클래스별 개수 확인은 추후 helper 스크립트로 자동화합니다.
 
-## 18. 성공 기준
+## 19. 성공 기준
 
 1경기 테스트 성공 기준:
 
@@ -652,7 +902,7 @@ replay_logo class 검출 가능
 overlay class는 후순위로 개선
 ```
 
-## 19. 다음 구현 대상
+## 20. 다음 구현 대상
 
 ```text
 src/vision/prepare_yolo_dataset.py
