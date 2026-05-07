@@ -4,6 +4,8 @@
 
 목표는 30경기 batch 분석을 위한 로컬 detector를 만드는 것입니다.
 
+Detector 검출이 끝난 뒤의 OCR/smoothing/Goal 평가 절차는 [OCR_SCOREBOARD_TEST_GUIDE.md](OCR_SCOREBOARD_TEST_GUIDE.md)를 기준으로 진행합니다.
+
 ## 1. 선택 모델
 
 ```text

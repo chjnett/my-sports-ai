@@ -40,14 +40,20 @@ scoreboard full inference 완료
 replay_logo strict 후보 12장 라벨 반영 완료
 scoreboard + replay_logo YOLO11s 재학습 완료
 replay_transition_logo / replay_segment 이벤트 CSV 생성 완료
+scoreboard crop 전체 생성 완료
+PaddleOCR scoreboard OCR smoke test 완료
+score/clock parsing 완료
+OCR smoothing smoke test 완료
+score_change vs Goal label 평가 smoke test 완료
 ```
 
 현재 다음 작업:
 
 ```text
-PaddleOCR scoreboard OCR 실행
-score/clock parsing
-temporal smoothing
+전체 scoreboard crop OCR 실행
+전체 temporal smoothing
+score_change event 생성
+Goal label Recall@5/10/30s 평가
 ```
 
 Phase 1 기준 완성도:
@@ -57,10 +63,10 @@ Frame sampling: 완료
 Vision detector: 1차 완료
 Replay logo event: 1차 완료
 OCR execution: 미완료
-OCR smoothing: 미완료
-Goal evaluation: 미완료
+OCR smoothing: smoke 완료
+Goal evaluation: smoke 완료
 
-Phase 1 전체 기준: 약 55%
+Phase 1 전체 기준: 약 65%
 ```
 
 ## 3. MVP 범위
@@ -631,6 +637,74 @@ crops written: 5277
 output root: outputs/crops/chelsea_burnley_2015_detector
 summary: outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv
 ```
+
+### 7.9 Scoreboard OCR 실행
+
+PaddleOCR로 scoreboard crop에서 팀명, 점수, 경기 시간을 추출합니다.
+
+Smoke test:
+
+```bash
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.ocr.run_scoreboard_ocr \
+  --crops outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv \
+  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoke.csv \
+  --limit 20 \
+  --device gpu
+```
+
+현재 smoke 결과:
+
+```text
+raw_text 예시: CHE 0-0 BUR 00:13
+score/clock parsing 정상
+전환 그래픽 구간에서는 CHE BUR #CHEBUR 같은 OCR 노이즈 존재
+```
+
+전체 실행:
+
+```bash
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.ocr.run_scoreboard_ocr \
+  --crops outputs/reports/chelsea_burnley_2015_scoreboard_crops.csv \
+  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full.csv \
+  --device gpu
+```
+
+### 7.10 OCR Smoothing
+
+같은 점수가 최근 window 안에서 여러 번 반복될 때만 안정 점수로 인정합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.ocr.smooth_scoreboard_ocr \
+  --ocr outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full.csv \
+  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed.csv \
+  --events-output outputs/events/chelsea_burnley_2015_score_change_events.csv \
+  --window-sec 8 \
+  --min-votes 3
+```
+
+Smoke test 결과:
+
+```text
+input rows: 20
+smoothed rows: 20
+score-change events: 0
+0-0 안정 점수 유지 확인
+```
+
+### 7.11 Goal Label 평가
+
+OCR 기반 score_change 이벤트를 SoccerNet Goal label과 비교합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.evaluation.evaluate_score_changes \
+  --labels outputs/reports/phase1a_events.csv \
+  --score-events outputs/events/chelsea_burnley_2015_score_change_events.csv \
+  --output outputs/reports/chelsea_burnley_2015_score_change_eval.csv \
+  --tolerances 5,10,30
+```
+
+Smoke test는 초반 20초만 사용하므로 score_change가 없는 것이 정상입니다.
+전체 OCR 이후에는 Chelsea 1 - 1 Burnley 경기의 Goal 2개 근처에서 score_change가 잡히는지 확인합니다.
 
 ## 8. Phase 1 완료 기준
 

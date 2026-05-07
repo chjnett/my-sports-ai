@@ -3,6 +3,7 @@
 이 폴더는 논문과 연구 개발에 필요한 문서를 보관합니다.
 
 루트 문서 [YOLO_DATASET_TEST_GUIDE.md](../YOLO_DATASET_TEST_GUIDE.md)는 YOLO 데이터셋 준비, 라벨링, 학습 테스트 절차를 담당합니다.
+루트 문서 [OCR_SCOREBOARD_TEST_GUIDE.md](../OCR_SCOREBOARD_TEST_GUIDE.md)는 scoreboard OCR, smoothing, Goal 평가 절차를 담당합니다.
 
 ## 문서 목록
 
@@ -35,9 +36,10 @@ Replay Grounding
 2026-05-07 기준:
 
 ```text
-전체 프로젝트: 약 35%
-Phase 1 Vision/OCR: 약 55%
+전체 프로젝트: 약 38%
+Phase 1 Vision/OCR: 약 65%
 Vision detector: 약 75%
+OCR MVP: 약 45%
 ```
 
 현재 완료된 핵심:
@@ -48,16 +50,19 @@ scoreboard YOLO11s detector
 replay_logo strict candidate extraction
 scoreboard + replay_logo YOLO11s fine-tuning
 replay_transition_logo / replay_segment event CSV
+scoreboard crop generation
+PaddleOCR smoke test
+OCR smoothing smoke test
+score_change evaluation smoke test
 ```
 
 다음 핵심:
 
 ```text
-scoreboard crop generation
-PaddleOCR execution
-score/clock parsing
-temporal smoothing
-Goal label evaluation
+full scoreboard OCR
+full temporal smoothing
+score_change event extraction
+Goal label Recall@5/10/30s evaluation
 ```
 
 ## 문서 작성 원칙
