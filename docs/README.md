@@ -36,10 +36,10 @@ Replay Grounding
 2026-05-07 기준:
 
 ```text
-전체 프로젝트: 약 38%
-Phase 1 Vision/OCR: 약 65%
+전체 프로젝트: 약 40%
+Phase 1 Vision/OCR: 약 70%
 Vision detector: 약 75%
-OCR MVP: 약 45%
+OCR MVP: 약 55%
 ```
 
 현재 완료된 핵심:
@@ -54,15 +54,17 @@ scoreboard crop generation
 PaddleOCR smoke test
 OCR smoothing smoke test
 score_change evaluation smoke test
+PaddleOCR full OCR
+strict score parser
+OCR CSV re-parsing
 ```
 
 다음 핵심:
 
 ```text
-full scoreboard OCR
-full temporal smoothing
-score_change event extraction
-Goal label Recall@5/10/30s evaluation
+overlay/scorer OCR candidate extraction
+score_change + replay_logo + scorer_text fusion
+Goal label Recall@5/10/30s re-evaluation
 ```
 
 ## 문서 작성 원칙

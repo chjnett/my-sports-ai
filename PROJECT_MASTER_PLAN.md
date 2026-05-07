@@ -43,7 +43,8 @@ OCR MVP 기준: 약 45%
 ```text
 프레임 추출, scoreboard 탐지, replay_logo 후보 추출/검출, replay event CSV 생성까지 완료.
 scoreboard crop, PaddleOCR smoke, OCR smoothing smoke, score_change 평가 스크립트까지 완료.
-이제 전체 crop OCR을 실행해 Goal label 대비 Recall을 확인하는 단계.
+전체 crop OCR과 strict score 재파싱까지 완료.
+현재 scoreboard 단독 Recall@30s는 1/2이며, 두 번째 골은 overlay/scorer 후보 결합이 필요한 상태.
 ```
 
 완료:
@@ -66,6 +67,8 @@ scoreboard crop 전체 생성
 PaddleOCR scoreboard OCR smoke test
 OCR smoothing smoke test
 score_change vs Goal label 평가 smoke test
+strict score parser
+기존 OCR CSV 재파싱 도구
 ```
 
 현재 모델 산출물:
@@ -87,11 +90,10 @@ datasets/yolo_broadcast_graphics_scoreboard_replay
 다음 구현 대상:
 
 ```text
-전체 scoreboard crop OCR 실행
-전체 OCR smoothing
-Score change event 생성
-Goal label Recall@5/10/30s 평가
-OCR 실패 사례 분석
+overlay/scorer OCR 후보 추출
+후반 80:31 VOKES 같은 scorer signal 정형화
+score_change + overlay + replay_logo 결합 이벤트 생성
+5경기 확장 평가
 ```
 
 ## 4. 개발 우선순위
@@ -154,6 +156,8 @@ src/vision/add_replay_logo_labels.py
 src/vision/build_replay_events.py
 src/vision/crop_detections.py
 src/ocr/run_scoreboard_ocr.py
+src/ocr/reparse_scoreboard_ocr.py
+src/ocr/scoreboard_text.py
 src/ocr/smooth_scoreboard_ocr.py
 src/evaluation/evaluate_score_changes.py
 ```

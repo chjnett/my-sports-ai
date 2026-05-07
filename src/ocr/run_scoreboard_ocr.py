@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import re
 from pathlib import Path
 from typing import Any
 
 from tqdm import tqdm
 
-
-SCORE_RE = re.compile(r"(?P<home>\d+)\s*[-:]\s*(?P<away>\d+)")
-CLOCK_RE = re.compile(r"(?P<minute>\d{1,2})\s*[:.]\s*(?P<second>\d{2})")
+from src.ocr.scoreboard_text import parse_clock, parse_score
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,20 +68,6 @@ def flatten_ocr_result(result: Any) -> tuple[str, float]:
     raw_text = " ".join(texts).strip()
     avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
     return raw_text, avg_conf
-
-
-def parse_score(text: str) -> tuple[str, str]:
-    match = SCORE_RE.search(text)
-    if not match:
-        return "", ""
-    return match.group("home"), match.group("away")
-
-
-def parse_clock(text: str) -> str:
-    match = CLOCK_RE.search(text)
-    if not match:
-        return ""
-    return f"{int(match.group('minute')):02d}:{int(match.group('second')):02d}"
 
 
 def run_ocr(ocr: Any, image_path: Path) -> Any:

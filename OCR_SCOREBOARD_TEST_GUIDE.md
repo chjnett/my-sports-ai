@@ -100,11 +100,27 @@ RTX 3090 기준 대략 수 분에서 10분대
 
 원시 OCR 결과에서 같은 점수가 최근 몇 초 안에 반복될 때만 안정 점수로 인정합니다.
 
+이미 OCR을 끝낸 뒤 파서만 개선한 경우에는 OCR을 다시 돌리지 말고 `raw_text`를 재파싱합니다.
+
+```powershell
+docker compose run --rm soccernet-app python -m src.ocr.reparse_scoreboard_ocr `
+  --input outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full.csv `
+  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv
+```
+
+재파싱 규칙:
+
+```text
+score는 1-0, 1 - 1처럼 하이픈(-)이 있는 값만 인정
+80:30 같은 clock 값은 score로 인정하지 않음
+기본 score 범위는 0-20
+```
+
 ```powershell
 docker compose run --rm soccernet-app python -m src.ocr.smooth_scoreboard_ocr `
-  --ocr outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full.csv `
-  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed.csv `
-  --events-output outputs/events/chelsea_burnley_2015_score_change_events.csv `
+  --ocr outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv `
+  --output outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed_reparsed.csv `
+  --events-output outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv `
   --window-sec 8 `
   --min-votes 3
 ```
@@ -112,8 +128,8 @@ docker compose run --rm soccernet-app python -m src.ocr.smooth_scoreboard_ocr `
 출력:
 
 ```text
-outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed.csv
-outputs/events/chelsea_burnley_2015_score_change_events.csv
+outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed_reparsed.csv
+outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv
 ```
 
 확인 명령:
@@ -136,8 +152,8 @@ Score change 이벤트가 SoccerNet Goal label 근처에 잡히는지 Recall@5/1
 ```powershell
 docker compose run --rm soccernet-app python -m src.evaluation.evaluate_score_changes `
   --labels outputs/reports/phase1a_events.csv `
-  --score-events outputs/events/chelsea_burnley_2015_score_change_events.csv `
-  --output outputs/reports/chelsea_burnley_2015_score_change_eval.csv `
+  --score-events outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv `
+  --output outputs/reports/chelsea_burnley_2015_score_change_eval_reparsed.csv `
   --tolerances 5,10,30
 ```
 
@@ -169,3 +185,11 @@ score_change가 너무 많이 나옴 -> --min-votes를 4 또는 5로 증가
 OCR 자체가 점수를 못 읽음 -> crop padding 또는 OCR 전처리 개선
 ```
 
+현재 Chelsea 1 - 1 Burnley 기준 재파싱 후 확인된 점:
+
+```text
+첫 골: Goal label 13:10, score_change 13:21, delta 11초
+두 번째 골: 후반 80:21 근처 scoreboard OCR이 1-1을 안정적으로 읽지 못함
+후반 80:31 근처 raw_text에 VOKES가 보임
+따라서 두 번째 골은 scoreboard 단독보다 overlay/scorer OCR 후보와 결합해야 함
+```

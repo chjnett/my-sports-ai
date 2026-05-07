@@ -65,7 +65,7 @@ def parse_score(row: dict[str, str]) -> Score | None:
     away = parse_int(row.get("parsed_away_score"))
     if home is None or away is None:
         return None
-    if home < 0 or away < 0:
+    if home < 0 or away < 0 or home > 20 or away > 20:
         return None
     return Score(home=home, away=away)
 
