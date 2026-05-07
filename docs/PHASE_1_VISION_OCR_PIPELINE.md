@@ -47,14 +47,16 @@ OCR smoothing smoke test 완료
 score_change vs Goal label 평가 smoke test 완료
 strict score parser 적용 완료
 기존 OCR CSV 재파싱 도구 완료
+text_cue 추출 완료
+highlight_candidate fusion 완료
 ```
 
 현재 다음 작업:
 
 ```text
-overlay/scorer OCR 후보 추출
-score_change + overlay/scorer + replay_logo 결합
-Goal label Recall@5/10/30s 재평가
+highlight_candidate 오탐 줄이기
+text_cue stopword/선수명 정규화
+candidate ranking
 5경기 확장
 ```
 
@@ -68,8 +70,9 @@ OCR execution: 1차 완료
 OCR smoothing: 1차 완료
 Goal evaluation: 1차 완료
 Overlay/scorer fusion: 미완료
+Event fusion: 1차 완료
 
-Phase 1 전체 기준: 약 70%
+Phase 1 전체 기준: 약 75%
 ```
 
 ## 3. MVP 범위
@@ -737,6 +740,50 @@ Recall@30s: 1/2 = 0.500
 첫 골: 13:10 label -> 13:21 score_change
 두 번째 골: 80:21 근처 scoreboard가 1-1을 안정적으로 읽지 못함
 80:31 raw_text에서 VOKES scorer 후보 확인
+```
+
+### 7.12 Text Cue + Event Fusion
+
+scoreboard 점수 변화만으로 놓치는 Goal은 OCR text cue와 replay signal을 함께 사용합니다.
+
+```bash
+docker compose run --rm soccernet-app python -m src.ocr.extract_text_cues \
+  --ocr outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv \
+  --output outputs/events/chelsea_burnley_2015_text_cues.csv \
+  --team-tokens CHE,BUR \
+  --stopwords CORN,CORNER,CORNERS,CORNRS,RUR \
+  --min-token-length 4 \
+  --merge-gap-sec 20
+```
+
+```bash
+docker compose run --rm soccernet-app python -m src.events.fuse_highlight_candidates \
+  --score-events outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv \
+  --text-events outputs/events/chelsea_burnley_2015_text_cues.csv \
+  --replay-events outputs/events/chelsea_burnley_2015_replay_events.csv \
+  --output outputs/events/chelsea_burnley_2015_highlight_candidates.csv \
+  --merge-window-sec 30
+```
+
+평가:
+
+```bash
+docker compose run --rm soccernet-app python -m src.evaluation.evaluate_score_changes \
+  --labels outputs/reports/phase1a_events.csv \
+  --score-events outputs/events/chelsea_burnley_2015_highlight_candidates.csv \
+  --output outputs/reports/chelsea_burnley_2015_highlight_candidate_eval.csv \
+  --tolerances 5,10,30 \
+  --event-types highlight_candidate
+```
+
+현재 결과:
+
+```text
+text cue events: 180
+highlight candidates: 50
+Recall@30s: 2/2 = 1.000
+첫 골: score_change, delta 11초
+두 번째 골: VOKES text_cue, delta 12초
 ```
 
 ## 8. Phase 1 완료 기준

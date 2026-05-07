@@ -193,3 +193,52 @@ OCR 자체가 점수를 못 읽음 -> crop padding 또는 OCR 전처리 개선
 후반 80:31 근처 raw_text에 VOKES가 보임
 따라서 두 번째 골은 scoreboard 단독보다 overlay/scorer OCR 후보와 결합해야 함
 ```
+
+## 8. Text Cue + Event Fusion
+
+scoreboard 점수 변화만으로 놓치는 골은 OCR 텍스트 cue를 함께 사용합니다.
+
+Text cue 추출:
+
+```powershell
+docker compose run --rm soccernet-app python -m src.ocr.extract_text_cues `
+  --ocr outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv `
+  --output outputs/events/chelsea_burnley_2015_text_cues.csv `
+  --team-tokens CHE,BUR `
+  --stopwords CORN,CORNER,CORNERS,CORNRS,RUR `
+  --min-token-length 4 `
+  --merge-gap-sec 20
+```
+
+score_change, text_cue, replay event 결합:
+
+```powershell
+docker compose run --rm soccernet-app python -m src.events.fuse_highlight_candidates `
+  --score-events outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv `
+  --text-events outputs/events/chelsea_burnley_2015_text_cues.csv `
+  --replay-events outputs/events/chelsea_burnley_2015_replay_events.csv `
+  --output outputs/events/chelsea_burnley_2015_highlight_candidates.csv `
+  --merge-window-sec 30
+```
+
+fused highlight candidate 평가:
+
+```powershell
+docker compose run --rm soccernet-app python -m src.evaluation.evaluate_score_changes `
+  --labels outputs/reports/phase1a_events.csv `
+  --score-events outputs/events/chelsea_burnley_2015_highlight_candidates.csv `
+  --output outputs/reports/chelsea_burnley_2015_highlight_candidate_eval.csv `
+  --tolerances 5,10,30 `
+  --event-types highlight_candidate
+```
+
+현재 결과:
+
+```text
+text cue events: 180
+highlight candidates: 50
+Goal labels: 2
+Recall@30s: 2/2 = 1.000
+첫 골: score_change, 13:10 -> 13:21, delta 11초
+두 번째 골: VOKES text_cue, 80:21 -> 80:31, delta 12초
+```

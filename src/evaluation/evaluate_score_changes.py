@@ -8,11 +8,16 @@ from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Compare score-change events to SoccerNet Goal labels.")
+    parser = argparse.ArgumentParser(description="Compare detected events to SoccerNet Goal labels.")
     parser.add_argument("--labels", required=True, type=Path, help="Label CSV from src.data.labels or phase1a.")
-    parser.add_argument("--score-events", required=True, type=Path, help="Score-change event CSV.")
+    parser.add_argument("--score-events", required=True, type=Path, help="Detected event CSV.")
     parser.add_argument("--output", required=True, type=Path, help="Per-goal evaluation CSV.")
     parser.add_argument("--tolerances", default="5,10,30", help="Comma-separated tolerance seconds.")
+    parser.add_argument(
+        "--event-types",
+        default="score_change",
+        help="Comma-separated event types to evaluate. Use 'all' for every row.",
+    )
     return parser.parse_args()
 
 
@@ -42,6 +47,12 @@ def load_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def parse_event_types(raw: str) -> set[str] | None:
+    if raw.strip().lower() == "all":
+        return None
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
 def goal_second(row: dict[str, str]) -> float:
     if row.get("half_second"):
         return parse_float(row.get("half_second"))
@@ -67,8 +78,13 @@ def best_match(goal: dict[str, str], events: list[dict[str, str]]) -> tuple[dict
 def main() -> None:
     args = parse_args()
     tolerances = parse_tolerances(args.tolerances)
+    event_types = parse_event_types(args.event_types)
     goals = [row for row in load_csv(args.labels) if row.get("label") == "Goal"]
-    events = [row for row in load_csv(args.score_events) if row.get("event_type") == "score_change"]
+    events = [
+        row
+        for row in load_csv(args.score_events)
+        if event_types is None or row.get("event_type") in event_types
+    ]
 
     fieldnames = [
         "goal_half",
@@ -77,6 +93,9 @@ def main() -> None:
         "goal_team",
         "nearest_score_event_second",
         "nearest_delta_sec",
+        "nearest_event_type",
+        "nearest_evidence_types",
+        "nearest_cue_texts",
         "nearest_from_score",
         "nearest_to_score",
         *[f"hit_at_{int(tolerance)}s" for tolerance in tolerances],
@@ -94,6 +113,9 @@ def main() -> None:
             "goal_team": goal.get("team", ""),
             "nearest_score_event_second": "",
             "nearest_delta_sec": "",
+            "nearest_event_type": "",
+            "nearest_evidence_types": "",
+            "nearest_cue_texts": "",
             "nearest_from_score": "",
             "nearest_to_score": "",
         }
@@ -102,8 +124,11 @@ def main() -> None:
                 {
                     "nearest_score_event_second": f"{event_second(nearest):.1f}",
                     "nearest_delta_sec": f"{delta:.1f}",
+                    "nearest_event_type": nearest.get("event_type", ""),
+                    "nearest_evidence_types": nearest.get("evidence_types", ""),
+                    "nearest_cue_texts": nearest.get("cue_texts", ""),
                     "nearest_from_score": nearest.get("from_score", ""),
-                    "nearest_to_score": nearest.get("to_score", ""),
+                    "nearest_to_score": nearest.get("to_score", "") or nearest.get("score_signal", ""),
                 }
             )
         for tolerance in tolerances:
@@ -121,7 +146,7 @@ def main() -> None:
 
     goal_count = len(goals)
     print(f"goals: {goal_count}")
-    print(f"score-change events: {len(events)}")
+    print(f"events: {len(events)}")
     for tolerance in tolerances:
         recall = hit_counts[tolerance] / goal_count if goal_count else 0.0
         print(f"Recall@{int(tolerance)}s: {hit_counts[tolerance]}/{goal_count} = {recall:.3f}")

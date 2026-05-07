@@ -7,10 +7,10 @@
 2026-05-07 기준:
 
 ```text
-전체 프로젝트 기준: 약 40%
-Phase 1 Vision/OCR 기준: 약 70%
+전체 프로젝트 기준: 약 43%
+Phase 1 Vision/OCR 기준: 약 75%
 Vision detector 기준: 약 75%
-OCR MVP 기준: 약 55%
+OCR MVP 기준: 약 65%
 ```
 
 현재 완료된 큰 흐름:
@@ -25,6 +25,8 @@ PaddleOCR full OCR 실행
 strict score/clock parsing
 OCR smoothing
 score_change vs Goal label 평가
+text cue 추출
+highlight candidate fusion
 ```
 
 현재 타겟 경기:
@@ -41,10 +43,11 @@ strict parsed score rows: 3426
 strict parsed clock rows: 5186
 score_change events: 1
 Goal labels: 2
-Recall@30s: 1/2 = 0.500
+scoreboard 단독 Recall@30s: 1/2 = 0.500
+fused highlight_candidate Recall@30s: 2/2 = 1.000
 첫 골: label 13:10 -> score_change 13:21
 두 번째 골: 후반 80:21 근처 scoreboard OCR 단독으로는 1-1을 안정적으로 읽지 못함
-후반 80:31 raw_text에서 VOKES scorer 후보 확인
+두 번째 골: 후반 80:31 VOKES text_cue로 검출
 ```
 
 ## 1. 완료된 작업
@@ -108,24 +111,27 @@ Recall@30s: 1/2 = 0.500
 - [x] 기존 OCR CSV strict 재파싱 완료
 - [x] OCR smoothing 완료
 - [x] Goal label 평가 완료
+- [x] `src/ocr/extract_text_cues.py` 구현
+- [x] `src/events/fuse_highlight_candidates.py` 구현
+- [x] text_cue + score_change + replay event fusion 완료
+- [x] fused highlight_candidate Recall@30s 2/2 확인
 
 ## 2. 바로 다음 작업
 
-### P0. Overlay / Scorer OCR 후보 추출
+### P0. Highlight Candidate 오탐 줄이기
 
-- [ ] score_change가 안 잡힌 Goal 주변 raw OCR 조사
-- [ ] `VOKES` 같은 scorer name 후보 추출 규칙 정의
-- [ ] scoreboard crop이 아닌 full frame 또는 overlay crop 기반 OCR 후보 생성
-- [ ] Goal 주변 `team/player/event text` 후보 CSV 생성
-- [ ] replay_logo segment와 scorer 후보 시간 관계 확인
+- [ ] text_cue 후보 180개를 줄이는 stopword 정리
+- [ ] Chelsea/Burnley 관련 OCR 노이즈 정규화
+- [ ] 후보 50개를 evidence 기반으로 ranking
+- [ ] score_change 포함 후보에 높은 점수 부여
+- [ ] text_cue 단독 후보는 replay_logo/시간 문맥으로 필터링
 
-### P0. Event Fusion
+### P0. Overlay OCR 확장
 
-- [ ] `score_change`, `replay_logo`, `scorer_text`를 하나의 후보 이벤트로 병합
-- [ ] 같은 Goal 주변 여러 신호를 묶는 merge window 정의
-- [ ] evidence column 설계
-- [ ] 하이라이트 후보 CSV 생성
-- [ ] Goal label Recall@5/10/30s 재평가
+- [ ] full frame 또는 lower-third 영역 crop 생성
+- [ ] overlay OCR 전용 CSV 생성
+- [ ] 선수명/카드/교체/골 자막 후보 분리
+- [ ] 현재 scoreboard crop 기반 text_cue와 비교
 
 ### P1. OCR 품질 개선
 
@@ -172,6 +178,8 @@ models/yolo/broadcast_graphics_yolo11s_scoreboard_replay.pt
 outputs/detections/chelsea_burnley_2015_scoreboard_replay_full.csv
 outputs/events/chelsea_burnley_2015_replay_events.csv
 outputs/events/chelsea_burnley_2015_score_change_events_reparsed.csv
+outputs/events/chelsea_burnley_2015_text_cues.csv
+outputs/events/chelsea_burnley_2015_highlight_candidates.csv
 ```
 
 OCR:
@@ -182,6 +190,7 @@ outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full.csv
 outputs/ocr_csv/chelsea_burnley_2015_scoreboard_full_reparsed.csv
 outputs/ocr_csv/chelsea_burnley_2015_scoreboard_smoothed_reparsed.csv
 outputs/reports/chelsea_burnley_2015_score_change_eval_reparsed.csv
+outputs/reports/chelsea_burnley_2015_highlight_candidate_eval.csv
 ```
 
 ## 5. 다음 커밋 후보
@@ -191,6 +200,9 @@ src/ocr/scoreboard_text.py
 src/ocr/reparse_scoreboard_ocr.py
 src/ocr/run_scoreboard_ocr.py
 src/ocr/smooth_scoreboard_ocr.py
+src/ocr/extract_text_cues.py
+src/events/fuse_highlight_candidates.py
+src/evaluation/evaluate_score_changes.py
 OCR_SCOREBOARD_TEST_GUIDE.md
 TODO.md
 PROJECT_MASTER_PLAN.md
