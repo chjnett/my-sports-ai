@@ -66,6 +66,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running them.")
     parser.add_argument("--limit-matches", type=int, default=0)
     parser.add_argument("--ocr-device", default="gpu", choices=["gpu", "cpu"])
+    parser.add_argument(
+        "--continue-on-error",
+        action="store_true",
+        help="Log a failed match/stage and continue with the next match.",
+    )
     return parser.parse_args()
 
 
@@ -369,6 +374,14 @@ def output_exists(path: Path | None) -> bool:
     return path.exists() and path.stat().st_size > 0
 
 
+def has_label_file(paths: MatchPaths) -> bool:
+    return (paths.match_dir / "Labels-v2.json").exists()
+
+
+def has_half_videos(paths: MatchPaths) -> bool:
+    return any(paths.match_dir.glob("1*.mkv")) and any(paths.match_dir.glob("2*.mkv"))
+
+
 def run_command(command: list[str], dry_run: bool) -> None:
     printable = " ".join(f'"{part}"' if " " in part else part for part in command)
     print(f"$ {printable}")
@@ -394,11 +407,12 @@ def read_topk_recall(path: Path, top_k: str = "5") -> str:
     return ""
 
 
-def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths]) -> Path:
+def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths], statuses: dict[str, str]) -> Path:
     output = as_path(config["output_root"]) / "batch_summary.csv"
     output.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "match_id",
+        "status",
         "detections",
         "scoreboard_crops",
         "ocr_rows",
@@ -416,6 +430,7 @@ def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths]) -
             writer.writerow(
                 {
                     "match_id": paths.match_id,
+                    "status": statuses.get(paths.match_id, ""),
                     "detections": count_csv_rows(paths.detections),
                     "scoreboard_crops": count_csv_rows(paths.crop_summary),
                     "ocr_rows": count_csv_rows(paths.ocr_full),
@@ -439,23 +454,41 @@ def main() -> None:
         matches = matches[: args.limit_matches]
 
     all_paths: list[MatchPaths] = []
+    statuses: dict[str, str] = {}
     for index, match in enumerate(matches, start=1):
         paths = paths_for_match(config, match)
         all_paths.append(paths)
+        statuses[paths.match_id] = "pending"
         print(f"\n=== [{index}/{len(matches)}] {paths.match_id} ===")
         print(f"match_dir: {paths.match_dir}")
         if not paths.match_dir.exists():
             print(f"SKIP missing match directory: {paths.match_dir}")
+            statuses[paths.match_id] = "skipped_missing_match_dir"
             continue
-        for stage in stages:
-            command, expected_output = command_for_stage(stage, config, paths, ocr_device=args.ocr_device)
-            if args.skip_existing and output_exists(expected_output):
-                print(f"skip {stage}: {expected_output}")
-                continue
-            print(f"\n[{paths.match_id}] stage: {stage}")
-            run_command(command, dry_run=args.dry_run)
+        if "frames" in stages and not has_label_file(paths):
+            print(f"SKIP missing Labels-v2.json: {paths.match_dir / 'Labels-v2.json'}")
+            statuses[paths.match_id] = "skipped_missing_labels"
+            continue
+        if "frames" in stages and not has_half_videos(paths):
+            print(f"SKIP missing half videos under: {paths.match_dir}")
+            statuses[paths.match_id] = "skipped_missing_videos"
+            continue
+        try:
+            for stage in stages:
+                command, expected_output = command_for_stage(stage, config, paths, ocr_device=args.ocr_device)
+                if args.skip_existing and output_exists(expected_output):
+                    print(f"skip {stage}: {expected_output}")
+                    continue
+                print(f"\n[{paths.match_id}] stage: {stage}")
+                run_command(command, dry_run=args.dry_run)
+            statuses[paths.match_id] = "completed" if not args.dry_run else "dry_run"
+        except subprocess.CalledProcessError as exc:
+            statuses[paths.match_id] = f"failed_stage_exit_{exc.returncode}"
+            print(f"FAILED {paths.match_id}: {exc}")
+            if not args.continue_on_error:
+                raise
 
-    summary = write_batch_summary(config, all_paths)
+    summary = write_batch_summary(config, all_paths, statuses)
     print(f"\nbatch summary: {summary}")
 
 

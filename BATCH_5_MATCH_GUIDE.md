@@ -84,7 +84,8 @@ docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.ru
 ```powershell
 docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.run_batch `
   --config configs/batch_5_matches.yml `
-  --skip-existing
+  --skip-existing `
+  --continue-on-error
 ```
 
 실행 stage:
@@ -111,12 +112,14 @@ review
 ```powershell
 docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.run_batch `
   --config configs/batch_5_matches.yml `
-  --skip-existing
+  --skip-existing `
+  --continue-on-error
 ```
 
 `phase1a_events.csv`가 없다는 에러가 나면 같은 명령을 다시 실행하면 됩니다.
 현재 batch runner는 batch용 label CSV가 없을 때 `frames` stage를 다시 실행해서 라벨 CSV를 생성합니다.
 이미 프레임이 있으면 기존 프레임은 대부분 skip되므로 오래 걸리지 않습니다.
+아직 다운로드가 덜 된 경기는 `skipped_missing_labels` 또는 `skipped_missing_videos` 상태로 summary에 남기고 다음 경기로 넘어갑니다.
 
 특정 stage부터 다시 돌리고 싶으면:
 
@@ -139,7 +142,7 @@ Get-Content outputs\batch_5\batch_summary.csv
 
 ```powershell
 Import-Csv outputs\batch_5\batch_summary.csv |
-  Select-Object match_id,ocr_rows,score_events,text_events,candidates,ranked_candidates,top5_recall_at_30s,review_sheet |
+  Select-Object match_id,status,ocr_rows,score_events,text_events,candidates,ranked_candidates,top5_recall_at_30s,review_sheet |
   Format-Table -AutoSize
 ```
 
