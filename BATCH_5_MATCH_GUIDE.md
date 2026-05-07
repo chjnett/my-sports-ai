@@ -114,6 +114,10 @@ docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.ru
   --skip-existing
 ```
 
+`phase1a_events.csv`가 없다는 에러가 나면 같은 명령을 다시 실행하면 됩니다.
+현재 batch runner는 batch용 label CSV가 없을 때 `frames` stage를 다시 실행해서 라벨 CSV를 생성합니다.
+이미 프레임이 있으면 기존 프레임은 대부분 skip되므로 오래 걸리지 않습니다.
+
 특정 stage부터 다시 돌리고 싶으면:
 
 ```powershell

@@ -35,6 +35,7 @@ class MatchPaths:
     match_dir: Path
     frame_dir: Path
     reports_dir: Path
+    label_events: Path
     detections: Path
     replay_events: Path
     crop_root: Path
@@ -102,6 +103,7 @@ def paths_for_match(config: dict[str, Any], match: dict[str, Any]) -> MatchPaths
         match_dir=data_root / relative_path,
         frame_dir=frames_root / relative_path,
         reports_dir=match_root / "reports",
+        label_events=match_root / "reports" / "phase1a_events.csv",
         detections=match_root / "detections" / "graphics.csv",
         replay_events=match_root / "events" / "replay_events.csv",
         crop_root=match_root / "crops",
@@ -147,7 +149,7 @@ def command_for_stage(
                 "--reports-dir",
                 paths.reports_dir.as_posix(),
             ],
-            paths.frame_dir,
+            paths.label_events,
         )
     if stage == "detect":
         return (
@@ -322,7 +324,7 @@ def command_for_stage(
                 "-m",
                 "src.evaluation.evaluate_topk_candidates",
                 "--labels",
-                (paths.reports_dir / "phase1a_events.csv").as_posix(),
+                paths.label_events.as_posix(),
                 "--candidates",
                 paths.ranked_candidates.as_posix(),
                 "--output",
