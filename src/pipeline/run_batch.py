@@ -26,6 +26,9 @@ DEFAULT_STAGES = [
     "rank",
     "eval",
     "review",
+    "clip_plan",
+    "clips",
+    "compose",
 ]
 
 
@@ -52,6 +55,10 @@ class MatchPaths:
     topk_eval: Path
     topk_details: Path
     review_root: Path
+    clips_dir: Path
+    clip_plan: Path
+    clip_report: Path
+    highlight_video: Path
 
 
 def parse_args() -> argparse.Namespace:
@@ -125,6 +132,10 @@ def paths_for_match(config: dict[str, Any], match: dict[str, Any]) -> MatchPaths
         topk_eval=match_root / "reports" / "highlight_topk_eval.csv",
         topk_details=match_root / "reports" / "highlight_topk_eval_details.csv",
         review_root=match_root / "reviews" / "highlight_top5",
+        clips_dir=match_root / "clips",
+        clip_plan=match_root / "clips" / "clip_plan.csv",
+        clip_report=match_root / "reports" / "clip_extraction_report.csv",
+        highlight_video=match_root / "highlights" / "highlight_top5.mp4",
     )
 
 
@@ -300,6 +311,8 @@ def command_for_stage(
                 paths.text_events.as_posix(),
                 "--replay-events",
                 paths.replay_events.as_posix(),
+                "--label-events",
+                paths.label_events.as_posix(),
                 "--output",
                 paths.candidates.as_posix(),
                 "--merge-window-sec",
@@ -365,6 +378,79 @@ def command_for_stage(
             ],
             paths.review_root / "contact_sheet.jpg",
         )
+    if stage == "clip_plan":
+        return (
+            [
+                py,
+                "-m",
+                "src.video.build_clip_plan",
+                "--candidates",
+                paths.ranked_candidates.as_posix(),
+                "--match-dir",
+                paths.match_dir.as_posix(),
+                "--output",
+                paths.clip_plan.as_posix(),
+                "--clips-dir",
+                paths.clips_dir.as_posix(),
+                "--match-id",
+                paths.match_id,
+                "--top-k",
+                str(config.get("clip_top_k", config.get("review_top_k", 5))),
+                "--score-pre-sec",
+                str(config.get("clip_score_pre_sec", 40)),
+                "--score-post-sec",
+                str(config.get("clip_score_post_sec", 20)),
+                "--text-pre-sec",
+                str(config.get("clip_text_pre_sec", 25)),
+                "--text-post-sec",
+                str(config.get("clip_text_post_sec", 15)),
+                "--replay-pre-sec",
+                str(config.get("clip_replay_pre_sec", 45)),
+                "--replay-post-sec",
+                str(config.get("clip_replay_post_sec", 5)),
+                "--card-pre-sec",
+                str(config.get("clip_card_pre_sec", 25)),
+                "--card-post-sec",
+                str(config.get("clip_card_post_sec", 25)),
+                "--min-duration-sec",
+                str(config.get("clip_min_duration_sec", 20)),
+                "--max-duration-sec",
+                str(config.get("clip_max_duration_sec", 75)),
+                "--merge-overlap-ratio",
+                str(config.get("clip_merge_overlap_ratio", 0.50)),
+                "--merge-gap-sec",
+                str(config.get("clip_merge_gap_sec", 30)),
+            ],
+            paths.clip_plan,
+        )
+    if stage == "clips":
+        return (
+            [
+                py,
+                "-m",
+                "src.video.extract_highlight_clips",
+                "--clip-plan",
+                paths.clip_plan.as_posix(),
+                "--report",
+                paths.clip_report.as_posix(),
+                "--overwrite",
+            ],
+            paths.clip_report,
+        )
+    if stage == "compose":
+        return (
+            [
+                py,
+                "-m",
+                "src.video.compose_highlight_video",
+                "--clip-plan",
+                paths.clip_plan.as_posix(),
+                "--output",
+                paths.highlight_video.as_posix(),
+                "--overwrite",
+            ],
+            paths.highlight_video,
+        )
     raise ValueError(f"Unsupported stage: {stage}")
 
 
@@ -409,6 +495,16 @@ def read_topk_recall(path: Path, top_k: str = "5") -> str:
     return ""
 
 
+def file_exists_flag(path: Path) -> str:
+    return "1" if path.exists() and path.stat().st_size > 0 else "0"
+
+
+def file_size_mb(path: Path) -> str:
+    if not path.exists():
+        return "0.000"
+    return f"{path.stat().st_size / (1024 * 1024):.3f}"
+
+
 def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths], statuses: dict[str, str]) -> Path:
     output = as_path(config["output_root"]) / "batch_summary.csv"
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -424,6 +520,12 @@ def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths], s
         "ranked_candidates",
         "top5_recall_at_30s",
         "review_sheet",
+        "clip_plan",
+        "clip_count",
+        "clip_report_rows",
+        "highlight_video",
+        "highlight_video_exists",
+        "highlight_video_size_mb",
     ]
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -442,6 +544,12 @@ def write_batch_summary(config: dict[str, Any], match_paths: list[MatchPaths], s
                     "ranked_candidates": count_csv_rows(paths.ranked_candidates),
                     "top5_recall_at_30s": read_topk_recall(paths.topk_eval, top_k="5"),
                     "review_sheet": (paths.review_root / "contact_sheet.jpg").as_posix(),
+                    "clip_plan": paths.clip_plan.as_posix(),
+                    "clip_count": count_csv_rows(paths.clip_plan),
+                    "clip_report_rows": count_csv_rows(paths.clip_report),
+                    "highlight_video": paths.highlight_video.as_posix(),
+                    "highlight_video_exists": file_exists_flag(paths.highlight_video),
+                    "highlight_video_size_mb": file_size_mb(paths.highlight_video),
                 }
             )
     return output

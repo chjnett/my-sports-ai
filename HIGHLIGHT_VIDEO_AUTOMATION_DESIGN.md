@@ -157,17 +157,18 @@ clip_reason
 
 ```text
 score_change 포함 후보:
-  start = candidate_time - 25초
-  end   = candidate_time + 35초
+  start = candidate_time - 40초
+  end   = candidate_time + 20초
 
 text_cue only 후보:
-  start = candidate_time - 20초
-  end   = candidate_time + 30초
+  start = candidate_time - 25초
+  end   = candidate_time + 15초
 
-replay_segment 포함 후보:
-  replay segment start/end를 우선 사용
-  start = replay_start - 5초
-  end   = replay_end + 5초
+replay_transition_logo 또는 replay_segment 포함 후보:
+  리플레이 자체보다 리플레이 직전 실제 플레이 장면을 우선 사용
+  anchor = replay logo/segment의 가장 이른 시점
+  start = anchor - 45초
+  end   = anchor + 5초
 ```
 
 ### 5.2 제한
@@ -257,7 +258,8 @@ outputs/batch_5/matches/{match_id}/highlights/highlight_top5.mp4
 초기 MVP:
 
 ```text
-rank 순서대로 concat
+후보 선정은 rank 기준 Top-K를 사용
+최종 영상 병합은 경기 타임라인 순서로 concat
 별도 인트로/자막 없음
 ```
 
@@ -314,6 +316,15 @@ clips
 compose
 ```
 
+현재 구현 상태:
+
+```text
+src/video/build_clip_plan.py 구현 완료
+src/video/extract_highlight_clips.py 구현 완료
+src/video/compose_highlight_video.py 구현 완료
+run_batch.py stage 통합 완료
+```
+
 예상 명령:
 
 ```powershell
@@ -338,7 +349,7 @@ docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.ru
 ### Step 1. Clip Plan
 
 ```text
-src/video/build_clip_plan.py 구현
+src/video/build_clip_plan.py 구현 완료
 Chelsea-Burnley 1경기에서 clip_plan.csv 생성
 Top-5 후보의 start/end가 자연스러운지 확인
 ```
@@ -346,7 +357,7 @@ Top-5 후보의 start/end가 자연스러운지 확인
 ### Step 2. Clip Extraction
 
 ```text
-src/video/extract_highlight_clips.py 구현
+src/video/extract_highlight_clips.py 구현 완료
 Top-5 후보별 mp4 clip 생성
 clip_extraction_report.csv 생성
 ```
@@ -354,14 +365,14 @@ clip_extraction_report.csv 생성
 ### Step 3. Composition
 
 ```text
-src/video/compose_highlight_video.py 구현
+src/video/compose_highlight_video.py 구현 완료
 highlight_top5.mp4 생성
 ```
 
 ### Step 4. Batch Integration
 
 ```text
-run_batch.py에 clip_plan/clips/compose stage 추가
+run_batch.py에 clip_plan/clips/compose stage 추가 완료
 5경기 batch에 적용
 ```
 
@@ -406,4 +417,3 @@ candidate timestamp는 half 내부 시간입니다.
 half 1, candidate_video_sec=801  -> match clock 13:21
 half 2, candidate_video_sec=2133 -> match clock 80:33
 ```
-

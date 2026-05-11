@@ -82,6 +82,15 @@ def candidate_score(row: dict[str, str], boost_tokens: set[str], noise_tokens: s
     if "TEXT_CUE" in evidence_types:
         score += 10.0
         reasons.append("text_cue:+10")
+    if "RED_CARD" in evidence_types:
+        score += 95.0
+        reasons.append("red_card:+95")
+    if "YELLOW_CARD" in evidence_types:
+        score += 45.0
+        reasons.append("yellow_card:+45")
+    if "SUBSTITUTION" in evidence_types:
+        score += 20.0
+        reasons.append("substitution:+20")
 
     evidence_bonus = min(evidence_count, 8) * 1.5
     if evidence_bonus:

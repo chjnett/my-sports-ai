@@ -25,6 +25,19 @@ text_merge_gap_sec: 20
 ranking_boost_tokens: DROGBA,VOKES,GIROUD,CAZORLA,GOMIS,ROONEY,STURRIDGE,COUTINHO
 top_k_values: 1,3,5,10,20
 review_top_k: 5
+clip_top_k: 5
+clip_score_pre_sec: 40
+clip_score_post_sec: 20
+clip_text_pre_sec: 25
+clip_text_post_sec: 15
+clip_replay_pre_sec: 45
+clip_replay_post_sec: 5
+clip_card_pre_sec: 25
+clip_card_post_sec: 25
+clip_min_duration_sec: 20
+clip_max_duration_sec: 75
+clip_merge_overlap_ratio: 0.50
+clip_merge_gap_sec: 30
 
 matches:
   - id: chelsea_burnley_2015_02_21

@@ -12,6 +12,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score-events", type=Path, help="Score-change event CSV.")
     parser.add_argument("--text-events", type=Path, help="Text cue event CSV.")
     parser.add_argument("--replay-events", type=Path, help="Replay event CSV.")
+    parser.add_argument("--label-events", type=Path, help="Optional SoccerNet label event CSV.")
+    parser.add_argument(
+        "--label-kinds",
+        default="Yellow card,Red card,Substitution",
+        help="Comma-separated SoccerNet labels to include as fallback highlight candidates.",
+    )
     parser.add_argument("--output", required=True, type=Path, help="Output fused candidate CSV.")
     parser.add_argument("--merge-window-sec", type=float, default=30.0)
     return parser.parse_args()
@@ -33,10 +39,24 @@ def load_csv(path: Path | None) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def normalize_label_name(raw: str) -> str:
+    return str(raw or "").strip().lower().replace(" ", "_")
+
+
+def parse_label_kinds(raw: str) -> set[str]:
+    return {label.strip() for label in raw.split(",") if label.strip()}
+
+
 def normalize_event(row: dict[str, str], source: str) -> dict[str, str]:
-    event_type = row.get("event_type", source)
-    timestamp = row.get("timestamp_sec") or row.get("start_sec") or "0"
-    text = row.get("cue_text") or row.get("to_score") or row.get("raw_text") or event_type
+    if source == "label":
+        label = row.get("label", "label_event")
+        event_type = normalize_label_name(label)
+        timestamp = row.get("half_second") or row.get("timestamp_sec") or "0"
+        text = f"{label}:{row.get('team', '')}".strip(":")
+    else:
+        event_type = row.get("event_type", source)
+        timestamp = row.get("timestamp_sec") or row.get("start_sec") or "0"
+        text = row.get("cue_text") or row.get("to_score") or row.get("raw_text") or event_type
     return {
         "half": row.get("half", ""),
         "timestamp_sec": timestamp,
@@ -70,6 +90,11 @@ def update_candidate(candidate: dict[str, str], event: dict[str, str]) -> None:
     candidate["evidence_count"] = str(int(candidate["evidence_count"]) + 1)
 
     if event["source"] == "text" and event["text"]:
+        cue_texts = set(filter(None, candidate["cue_texts"].split(";")))
+        cue_texts.add(event["text"])
+        candidate["cue_texts"] = ";".join(sorted(cue_texts))
+
+    if event["source"] == "label" and event["text"]:
         cue_texts = set(filter(None, candidate["cue_texts"].split(";")))
         cue_texts.add(event["text"])
         candidate["cue_texts"] = ";".join(sorted(cue_texts))
@@ -116,6 +141,9 @@ def main() -> None:
         if row.get("event_type") in {"replay_transition_logo", "replay_segment"}
     ]
     events.extend(normalize_event(row, "replay") for row in replay_rows)
+    label_kinds = parse_label_kinds(args.label_kinds)
+    label_rows = [row for row in load_csv(args.label_events) if row.get("label") in label_kinds]
+    events.extend(normalize_event(row, "label") for row in label_rows)
     events.sort(key=lambda row: (row.get("half", ""), parse_float(row.get("timestamp_sec"))))
 
     candidates: list[dict[str, str]] = []

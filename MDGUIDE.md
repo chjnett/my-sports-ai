@@ -166,24 +166,54 @@ Invoke-Item "outputs\batch_5\matches\swansea_manchester_united_2015_02_21\review
 
 ## 7. 다음 단계: 하이라이트 영상 자동 생성
 
-바로 다음 구현 목표는 ranked candidate를 실제 mp4 영상으로 만드는 것입니다.
+현재 영상 자동 생성 MVP는 구현되어 있습니다. 핵심 원칙은 아래와 같습니다.
+
+```text
+Top-K 후보 선정: rank 기준
+최종 highlight_top5.mp4 재생 순서: 경기 타임라인 순서
+```
+
+즉, rank가 높아도 경기 시간 순서를 바꾸지 않습니다.
+rank는 어떤 장면을 포함할지 고르는 기준이고, 최종 영상은 `half -> clip_start_sec` 순서로 병합됩니다.
+
+현재 후보 소스:
+
+```text
+score_change
+text_cue
+replay_transition_logo
+replay_segment
+Red card / Yellow card / Substitution SoccerNet label
+```
+
+리플레이 후보는 리플레이가 끝난 뒤가 아니라, 리플레이 로고/구간이 나오기 직전 실제 플레이 장면을 우선 보여주도록 clip window를 잡습니다.
 
 예상 구현 순서:
 
 ```text
-1. src/video/build_clip_plan.py
-2. clip_plan.csv 생성
-3. src/video/extract_highlight_clips.py
-4. 후보별 mp4 clip 생성
-5. src/video/compose_highlight_video.py
-6. 경기별 highlight_top5.mp4 생성
-7. run_batch.py에 clip_plan, clips, compose stage 추가
+1. src/video/build_clip_plan.py 구현 완료
+2. src/video/extract_highlight_clips.py 구현 완료
+3. src/video/compose_highlight_video.py 구현 완료
+4. run_batch.py에 clip_plan, clips, compose stage 연결 완료
+5. Swansea 1경기 생성 테스트
+6. 5경기 전체 highlight_top5.mp4 생성
+7. 사용자가 mp4를 직접 열어 품질 확인
 ```
 
 기준 설계 문서:
 
 ```text
 HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md
+```
+
+영상 생성 stage만 실행:
+
+```powershell
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.run_batch `
+  --config configs/batch_5_matches.yml `
+  --stages clip_plan,clips,compose `
+  --skip-existing `
+  --continue-on-error
 ```
 
 ## 8. Git에 올리지 않는 것
