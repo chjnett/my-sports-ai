@@ -21,6 +21,8 @@ DEFAULT_STAGES = [
     "ocr",
     "reparse",
     "smooth",
+    "overlay_ocr",
+    "overlay_text",
     "text",
     "fuse",
     "rank",
@@ -48,6 +50,8 @@ class MatchPaths:
     ocr_smoothed: Path
     score_events: Path
     text_events: Path
+    overlay_ocr_full: Path
+    overlay_text_events: Path
     candidates: Path
     ranked_candidates: Path
     score_eval: Path
@@ -125,6 +129,8 @@ def paths_for_match(config: dict[str, Any], match: dict[str, Any]) -> MatchPaths
         ocr_smoothed=match_root / "ocr" / "scoreboard_smoothed.csv",
         score_events=match_root / "events" / "score_change_events.csv",
         text_events=match_root / "events" / "text_cues.csv",
+        overlay_ocr_full=match_root / "ocr" / "overlay_ocr_full.csv",
+        overlay_text_events=match_root / "events" / "overlay_text_cues.csv",
         candidates=match_root / "events" / "highlight_candidates.csv",
         ranked_candidates=match_root / "events" / "highlight_candidates_ranked.csv",
         score_eval=match_root / "reports" / "score_change_eval.csv",
@@ -227,6 +233,8 @@ def command_for_stage(
                 str(config.get("scoreboard_crop_min_conf", 0.70)),
                 "--padding",
                 str(config.get("scoreboard_crop_padding", 8)),
+                "--scale-factor",
+                str(config.get("scoreboard_crop_scale", 2.0)),
                 "--best-per-frame",
             ],
             paths.crop_summary,
@@ -299,6 +307,44 @@ def command_for_stage(
             ],
             paths.text_events,
         )
+    if stage == "overlay_ocr":
+        return (
+            [
+                py,
+                "-m",
+                "src.ocr.run_overlay_ocr",
+                "--frames-root",
+                paths.frame_dir.as_posix(),
+                "--output",
+                paths.overlay_ocr_full.as_posix(),
+                "--device",
+                ocr_device,
+                "--step",
+                str(config.get("overlay_ocr_step", 1)),
+            ],
+            paths.overlay_ocr_full,
+        )
+    if stage == "overlay_text":
+        return (
+            [
+                py,
+                "-m",
+                "src.ocr.extract_text_cues",
+                "--ocr",
+                paths.overlay_ocr_full.as_posix(),
+                "--output",
+                paths.overlay_text_events.as_posix(),
+                "--team-tokens",
+                str(config.get("text_team_tokens", "")),
+                "--stopwords",
+                str(config.get("text_stopwords", "")),
+                "--min-token-length",
+                str(config.get("text_min_token_length", 4)),
+                "--merge-gap-sec",
+                str(config.get("text_merge_gap_sec", 20)),
+            ],
+            paths.overlay_text_events,
+        )
     if stage == "fuse":
         return (
             [
@@ -313,6 +359,8 @@ def command_for_stage(
                 paths.replay_events.as_posix(),
                 "--label-events",
                 paths.label_events.as_posix(),
+                "--overlay-events",
+                paths.overlay_text_events.as_posix(),
                 "--output",
                 paths.candidates.as_posix(),
                 "--merge-window-sec",

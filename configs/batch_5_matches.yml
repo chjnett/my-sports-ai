@@ -12,7 +12,10 @@ detection_conf: 0.25
 
 scoreboard_crop_min_conf: 0.70
 scoreboard_crop_padding: 8
+scoreboard_crop_scale: 2.0
 replay_logo_min_conf: 0.25
+overlay_ocr_enabled: true
+overlay_ocr_step: 1
 
 smoothing_window_sec: 8
 smoothing_min_votes: 3

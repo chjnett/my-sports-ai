@@ -82,6 +82,9 @@ def candidate_score(row: dict[str, str], boost_tokens: set[str], noise_tokens: s
     if "TEXT_CUE" in evidence_types:
         score += 10.0
         reasons.append("text_cue:+10")
+    if "OVERLAY_TEXT_CUE" in evidence_types:
+        score += 15.0
+        reasons.append("overlay_text:+15")
     if "GOAL" in evidence_types:
         score += 200.0
         reasons.append("goal_label:+200")

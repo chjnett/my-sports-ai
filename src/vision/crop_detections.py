@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--class-name", default="scoreboard")
     parser.add_argument("--min-conf", type=float, default=0.70)
     parser.add_argument("--padding", type=int, default=8)
+    parser.add_argument("--scale-factor", type=float, default=1.0, help="Upscale crop before saving (e.g. 2.0 for 2x size)")
     parser.add_argument(
         "--best-per-frame",
         action="store_true",
@@ -48,7 +49,7 @@ def keep_best_per_frame(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     ]
 
 
-def crop_row(row: dict[str, str], output_root: Path, padding: int) -> dict[str, str] | None:
+def crop_row(row: dict[str, str], output_root: Path, padding: int, scale_factor: float) -> dict[str, str] | None:
     image_path = Path(row["image_path"])
     image = cv2.imread(str(image_path))
     if image is None:
@@ -63,6 +64,9 @@ def crop_row(row: dict[str, str], output_root: Path, padding: int) -> dict[str, 
         return None
 
     crop = image[y1:y2, x1:x2]
+    if scale_factor != 1.0:
+        crop = cv2.resize(crop, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_CUBIC)
+
     half = str(row["half"])
     timestamp = str(row["timestamp_sec"]).replace(".", "p")
     class_name = row["class_name"]
@@ -120,7 +124,7 @@ def main() -> None:
     summary_rows: list[dict[str, str]] = []
     skipped = 0
     for row in rows:
-        summary = crop_row(row, args.output_root, args.padding)
+        summary = crop_row(row, args.output_root, args.padding, args.scale_factor)
         if summary is None:
             skipped += 1
             continue

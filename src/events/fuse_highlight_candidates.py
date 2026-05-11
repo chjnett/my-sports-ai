@@ -12,6 +12,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score-events", type=Path, help="Score-change event CSV.")
     parser.add_argument("--text-events", type=Path, help="Text cue event CSV.")
     parser.add_argument("--replay-events", type=Path, help="Replay event CSV.")
+    parser.add_argument("--overlay-events", type=Path, help="Optional overlay text event CSV.")
     parser.add_argument("--label-events", type=Path, help="Optional SoccerNet label event CSV.")
     parser.add_argument(
         "--label-kinds",
@@ -55,6 +56,8 @@ def normalize_event(row: dict[str, str], source: str) -> dict[str, str]:
         text = f"{label}:{row.get('team', '')}".strip(":")
     else:
         event_type = row.get("event_type", source)
+        if source == "overlay":
+            event_type = "overlay_text_cue"
         timestamp = row.get("timestamp_sec") or row.get("start_sec") or "0"
         text = row.get("cue_text") or row.get("to_score") or row.get("raw_text") or event_type
     return {
@@ -89,7 +92,7 @@ def update_candidate(candidate: dict[str, str], event: dict[str, str]) -> None:
     candidate["evidence_types"] = ";".join(sorted(evidence_types))
     candidate["evidence_count"] = str(int(candidate["evidence_count"]) + 1)
 
-    if event["source"] == "text" and event["text"]:
+    if event["source"] in ("text", "overlay") and event["text"]:
         cue_texts = set(filter(None, candidate["cue_texts"].split(";")))
         cue_texts.add(event["text"])
         candidate["cue_texts"] = ";".join(sorted(cue_texts))
@@ -135,6 +138,7 @@ def main() -> None:
     events: list[dict[str, str]] = []
     events.extend(normalize_event(row, "score") for row in load_csv(args.score_events))
     events.extend(normalize_event(row, "text") for row in load_csv(args.text_events))
+    events.extend(normalize_event(row, "overlay") for row in load_csv(args.overlay_events))
     replay_rows = [
         row
         for row in load_csv(args.replay_events)
