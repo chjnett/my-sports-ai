@@ -396,6 +396,8 @@ def command_for_stage(
                 paths.match_id,
                 "--top-k",
                 str(config.get("clip_top_k", config.get("review_top_k", 5))),
+                "--min-rank-score",
+                str(config.get("clip_min_rank_score", 0.0)),
                 "--score-pre-sec",
                 str(config.get("clip_score_pre_sec", 40)),
                 "--score-post-sec",

@@ -18,14 +18,14 @@ smoothing_window_sec: 8
 smoothing_min_votes: 3
 
 text_team_tokens: CHE,BUR,CRY,ARS,SWA,MUN,SOU,LIV
-text_stopwords: CORN,CORNER,CORNERS,CORNRS,RUR,CHEBUR
+text_stopwords: CORN,CORNER,CORNERS,CORNRS,RUR,CHEBUR,POSSESSION,ATTENDANCE,OFFSIDE,OFFSIDES,FOUL,FOULS,SHOTS,TARGET,HALF,FULL,TIME
 text_min_token_length: 4
 text_merge_gap_sec: 20
 
-ranking_boost_tokens: DROGBA,VOKES,GIROUD,CAZORLA,GOMIS,ROONEY,STURRIDGE,COUTINHO
 top_k_values: 1,3,5,10,20
-review_top_k: 5
-clip_top_k: 5
+review_top_k: 10
+clip_top_k: 10
+clip_min_rank_score: 80
 clip_score_pre_sec: 40
 clip_score_post_sec: 20
 clip_text_pre_sec: 25

@@ -38,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--clips-dir", required=True, type=Path, help="Directory where clips will be written.")
     parser.add_argument("--match-id", default="", help="Match id to write into the plan.")
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--min-rank-score", type=float, default=0.0)
     parser.add_argument("--score-pre-sec", type=float, default=40.0)
     parser.add_argument("--score-post-sec", type=float, default=20.0)
     parser.add_argument("--text-pre-sec", type=float, default=25.0)
@@ -81,13 +82,14 @@ def split_evidence(raw: str | None) -> set[str]:
     return {part.strip().lower() for part in str(raw or "").split(";") if part.strip()}
 
 
-def read_candidates(path: Path, top_k: int) -> list[dict[str, str]]:
+def read_candidates(path: Path, top_k: int, min_rank_score: float) -> list[dict[str, str]]:
     if not path.exists():
         raise SystemExit(f"Candidate CSV not found: {path}")
     with path.open("r", newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     rows.sort(key=lambda row: parse_int(row.get("rank"), 999999))
-    return rows[:top_k]
+    filtered = [row for row in rows if parse_float(row.get("rank_score")) >= min_rank_score]
+    return filtered[:top_k]
 
 
 def find_half_video(match_dir: Path, half: str) -> Path:
@@ -236,7 +238,7 @@ def safe_clip_name(row: dict[str, str]) -> str:
 
 
 def build_rows(args: argparse.Namespace) -> list[dict[str, str]]:
-    candidates = read_candidates(args.candidates, args.top_k)
+    candidates = read_candidates(args.candidates, args.top_k, args.min_rank_score)
     video_cache: dict[str, tuple[Path, float]] = {}
     rows: list[dict[str, str]] = []
 
