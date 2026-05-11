@@ -15,7 +15,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--label-events", type=Path, help="Optional SoccerNet label event CSV.")
     parser.add_argument(
         "--label-kinds",
-        default="Yellow card,Red card,Substitution",
+        default="Goal,Yellow card,Red card,Substitution",
         help="Comma-separated SoccerNet labels to include as fallback highlight candidates.",
     )
     parser.add_argument("--output", required=True, type=Path, help="Output fused candidate CSV.")
