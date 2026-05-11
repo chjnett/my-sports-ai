@@ -15,6 +15,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--details-output", type=Path, help="Optional per-goal Top-K details CSV.")
     parser.add_argument("--top-k", default="3,5,10,20", help="Comma-separated K values.")
     parser.add_argument("--tolerances", default="5,10,30", help="Comma-separated tolerance seconds.")
+    parser.add_argument(
+        "--matching",
+        choices=["point", "interval"],
+        default="interval",
+        help="Use candidate timestamp only, or candidate start/end interval distance.",
+    )
     return parser.parse_args()
 
 
@@ -56,14 +62,39 @@ def event_second(row: dict[str, str]) -> float:
     return parse_float(row.get("timestamp_sec"))
 
 
-def nearest_event(goal: dict[str, str], candidates: list[dict[str, str]]) -> tuple[dict[str, str] | None, float | None]:
+def event_start(row: dict[str, str]) -> float:
+    return parse_float(row.get("start_timestamp_sec"), event_second(row))
+
+
+def event_end(row: dict[str, str]) -> float:
+    return parse_float(row.get("end_timestamp_sec"), event_second(row))
+
+
+def event_distance(goal_ts: float, candidate: dict[str, str], matching: str) -> float:
+    if matching == "point":
+        return abs(event_second(candidate) - goal_ts)
+
+    start = event_start(candidate)
+    end = event_end(candidate)
+    if start > end:
+        start, end = end, start
+    if start <= goal_ts <= end:
+        return 0.0
+    return min(abs(start - goal_ts), abs(end - goal_ts), abs(event_second(candidate) - goal_ts))
+
+
+def nearest_event(
+    goal: dict[str, str],
+    candidates: list[dict[str, str]],
+    matching: str,
+) -> tuple[dict[str, str] | None, float | None]:
     goal_half = str(goal.get("half", "")).strip()
     goal_ts = goal_second(goal)
     same_half = [candidate for candidate in candidates if str(candidate.get("half", "")).strip() == goal_half]
     if not same_half:
         return None, None
-    nearest = min(same_half, key=lambda candidate: abs(event_second(candidate) - goal_ts))
-    return nearest, abs(event_second(nearest) - goal_ts)
+    nearest = min(same_half, key=lambda candidate: event_distance(goal_ts, candidate, matching))
+    return nearest, event_distance(goal_ts, nearest, matching)
 
 
 def main() -> None:
@@ -81,15 +112,18 @@ def main() -> None:
         hit_counts = {tolerance: 0 for tolerance in tolerances}
 
         for goal in goals:
-            nearest, delta = nearest_event(goal, selected)
+            nearest, delta = nearest_event(goal, selected, args.matching)
             detail = {
                 "top_k": str(top_k),
                 "goal_half": goal.get("half", ""),
                 "goal_second": f"{goal_second(goal):.1f}",
                 "goal_game_time": goal.get("game_time", ""),
+                "matching": args.matching,
                 "nearest_rank": "",
                 "nearest_candidate_id": "",
                 "nearest_timestamp_sec": "",
+                "nearest_start_sec": "",
+                "nearest_end_sec": "",
                 "nearest_delta_sec": "",
                 "nearest_rank_score": "",
                 "nearest_evidence_types": "",
@@ -101,6 +135,8 @@ def main() -> None:
                         "nearest_rank": nearest.get("rank", ""),
                         "nearest_candidate_id": nearest.get("candidate_id", ""),
                         "nearest_timestamp_sec": f"{event_second(nearest):.1f}",
+                        "nearest_start_sec": f"{event_start(nearest):.1f}",
+                        "nearest_end_sec": f"{event_end(nearest):.1f}",
                         "nearest_delta_sec": f"{delta:.1f}",
                         "nearest_rank_score": nearest.get("rank_score", ""),
                         "nearest_evidence_types": nearest.get("evidence_types", ""),
@@ -143,6 +179,7 @@ def main() -> None:
 
     print(f"goals: {len(goals)}")
     print(f"candidates: {len(candidates)}")
+    print(f"matching: {args.matching}")
     for row in summary_rows:
         print(row)
     print(f"output: {args.output}")

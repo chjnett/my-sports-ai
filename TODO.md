@@ -4,13 +4,13 @@
 
 ## 0. 현재 상태
 
-2026-05-07 기준:
+2026-05-11 기준:
 
 ```text
-전체 프로젝트 기준: 약 46%
-Phase 1 Vision/OCR 기준: 약 80%
+전체 프로젝트 기준: 약 48%
+Phase 1 Vision/OCR 기준: 약 83%
 Vision detector 기준: 약 75%
-OCR MVP 기준: 약 72%
+OCR MVP 기준: 약 75%
 ```
 
 현재 완료된 큰 흐름:
@@ -32,12 +32,19 @@ Top-K 평가
 Top-5 visual review contact sheet 생성
 5경기 batch 설정
 batch runner 구현
+하이라이트 영상 자동 생성 설계 문서 작성
+GUI 다운로드 프리셋 개선
+누락 3경기 라벨/720p 영상 다운로드 완료
+5경기 batch 재실행 시작
+candidate 대표 timestamp score_change 우선 적용
+interval 기반 Top-K 평가 적용
+Top-5 review sheet +30초 프레임 추가
 ```
 
 현재 타겟 경기:
 
 ```text
-data/spotting/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley
+configs/batch_5_matches.yml의 EPL 2014-2015 5경기
 ```
 
 현재 실험 결과:
@@ -51,9 +58,11 @@ Goal labels: 2
 scoreboard 단독 Recall@30s: 1/2 = 0.500
 fused highlight_candidate Recall@30s: 2/2 = 1.000
 ranked Top-5 Recall@30s: 2/2 = 1.000
+5경기 Top-5 interval Recall@30s: 11/11 = 1.000
 첫 골: label 13:10 -> score_change 13:21
 두 번째 골: 후반 80:21 근처 scoreboard OCR 단독으로는 1-1을 안정적으로 읽지 못함
 두 번째 골: 후반 80:31 VOKES text_cue로 검출
+Swansea-Man United 첫 골: stale OCR 후보 smoothing 문제 수정 후 Top-5에서 검출
 ```
 
 ## 1. 완료된 작업
@@ -129,20 +138,54 @@ ranked Top-5 Recall@30s: 2/2 = 1.000
 - [x] `configs/batch_5_matches.yml` 작성
 - [x] `src/pipeline/run_batch.py` 구현
 - [x] `BATCH_5_MATCH_GUIDE.md` 작성
+- [x] `HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md` 작성
+- [x] candidate 대표 timestamp가 score_change 이후 text/replay 병합으로 밀리는 문제 수정
+- [x] interval 기반 Top-K 평가 추가
+- [x] review contact sheet에 +30초 프레임 추가
 
 ## 2. 바로 다음 작업
 
 ### P0. 5경기 batch 실행
 
-- [ ] 5경기 다운로드 완료 확인
-- [ ] dry-run으로 batch 명령 확인
-- [ ] `--skip-existing`로 전체 pipeline 실행
-- [ ] `outputs/batch_5/batch_summary.csv` 확인
-- [ ] 경기별 Top-5 contact sheet 확인
-- [ ] 실패 경기/실패 Goal 기록
+- [x] 5경기 다운로드 완료 확인
+- [x] 누락 3경기 `Labels-v2.json` 확인
+- [x] 누락 3경기 `1_720p.mkv`, `2_720p.mkv` 확인
+- [x] `--skip-existing`로 전체 pipeline 재실행 시작
+- [x] `docker logs -f --tail 100 my_sports_ai_batch5`로 진행 상황 확인
+- [x] batch 컨테이너 종료 상태 확인
+- [x] `outputs/batch_5/batch_summary.csv` 확인
+- [x] 경기별 Top-5 contact sheet 생성 확인
+- [x] 실패 경기/실패 Goal 기록
+- [x] Swansea-Man United 첫 골 stale score 후보 문제 수정
+- [x] 5경기 Top-5 interval Recall@30s 11/11 확인
 
-### P0. Highlight Candidate 오탐 줄이기
+### P0. 내가 지금 해야 할 일
 
+- [x] batch가 끝날 때까지 노트북 전원/절전 상태 유지
+- [x] 주기적으로 `docker logs -f --tail 100 my_sports_ai_batch5` 확인
+- [x] 완료 후 `Get-Content outputs\batch_5\batch_summary.csv` 실행
+- [x] `status`가 `completed`가 아닌 경기 확인
+- [ ] 각 경기 `reviews/highlight_top5/contact_sheet.jpg`를 실제 영상과 비교
+- [ ] Top-5가 골 장면을 포함하는지 경기별로 메모
+- [x] Burnley-Arsenal 대표 timestamp/interval 평가 문제 확인
+- [x] Swansea-Man United 세 번째 골 대표 timestamp/리뷰 window 문제 확인
+- [x] Swansea-Man United 첫 골 후보 rank 개선 필요 여부 확인
+
+### P1. Highlight Video 자동 생성
+
+- [ ] `src/video/build_clip_plan.py` 구현
+- [ ] ranked Top-5 후보에서 `clip_plan.csv` 생성
+- [ ] 후보별 clip start/end가 실제 골 장면을 포함하는지 확인
+- [ ] `src/video/extract_highlight_clips.py` 구현
+- [ ] 후보별 mp4 clip 생성
+- [ ] `src/video/compose_highlight_video.py` 구현
+- [ ] 경기별 `highlight_top5.mp4` 생성
+- [ ] `run_batch.py`에 `clip_plan`, `clips`, `compose` stage 추가
+
+### P1. Highlight Candidate 오탐 줄이기
+
+- [x] Swansea-Man United 첫 골 주변 후보 rank 문제 분석
+- [x] stale OCR score 후보가 실제 점수 변화로 확정되는 smoothing 문제 수정
 - [ ] text_cue 후보 180개를 줄이는 stopword 정리
 - [ ] Chelsea/Burnley 관련 OCR 노이즈 정규화
 - [ ] boost token을 수동 입력이 아닌 roster/player dictionary로 분리
@@ -180,6 +223,7 @@ PROJECT_MASTER_PLAN.md
 YOLO_DATASET_TEST_GUIDE.md
 OCR_SCOREBOARD_TEST_GUIDE.md
 BATCH_5_MATCH_GUIDE.md
+HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md
 docs/PHASE_1_VISION_OCR_PIPELINE.md
 docs/RESEARCH_ARCHITECTURE.md
 docs/TECHNICAL_SPEC.md
@@ -237,6 +281,7 @@ src/evaluation/evaluate_topk_candidates.py
 src/pipeline/run_batch.py
 configs/batch_5_matches.yml
 BATCH_5_MATCH_GUIDE.md
+HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md
 OCR_SCOREBOARD_TEST_GUIDE.md
 TODO.md
 PROJECT_MASTER_PLAN.md

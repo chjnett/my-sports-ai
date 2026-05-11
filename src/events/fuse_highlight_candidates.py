@@ -63,7 +63,6 @@ def update_candidate(candidate: dict[str, str], event: dict[str, str]) -> None:
     end = parse_float(candidate["end_timestamp_sec"])
     candidate["start_timestamp_sec"] = f"{min(start, ts):.1f}"
     candidate["end_timestamp_sec"] = f"{max(end, ts):.1f}"
-    candidate["timestamp_sec"] = candidate["start_timestamp_sec"]
 
     evidence_types = set(filter(None, candidate["evidence_types"].split(";")))
     evidence_types.add(event["event_type"])
@@ -78,6 +77,8 @@ def update_candidate(candidate: dict[str, str], event: dict[str, str]) -> None:
     if event["source"] == "score":
         candidate["score_signal"] = event["text"]
         candidate["timestamp_sec"] = f"{parse_float(event['timestamp_sec']):.1f}"
+    elif not candidate["score_signal"]:
+        candidate["timestamp_sec"] = candidate["start_timestamp_sec"]
     if not candidate["example_raw_text"] and event["raw_text"]:
         candidate["example_raw_text"] = event["raw_text"]
     if not candidate["source_image"] and event["source_image"]:

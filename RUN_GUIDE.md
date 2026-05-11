@@ -71,6 +71,7 @@ docker compose down
 GUI에서 선택할 수 있는 주요 파일 종류:
 
 ```text
+라벨 + 풀 경기 영상 720p : Labels-v2.json, 1_720p.mkv, 2_720p.mkv
 Labels-v2.json : Action spotting 라벨
 1_224p.mkv     : 전반전 저해상도 영상
 2_224p.mkv     : 후반전 저해상도 영상
@@ -78,7 +79,16 @@ Labels-v2.json : Action spotting 라벨
 2_720p.mkv     : 후반전 720p 영상
 ```
 
-처음에는 `Labels-v2.json` 또는 224p 영상으로 연결과 경로를 확인하는 것을 권장합니다.
+현재 batch 파이프라인 검증에는 `라벨 + 풀 경기 영상 720p` 프리셋을 권장합니다.
+처음 연결만 확인할 때는 `Labels-v2.json` 또는 224p 영상으로 경로를 먼저 확인해도 됩니다.
+
+5경기 batch 검증용으로는 아래 3개가 모두 필요합니다.
+
+```text
+Labels-v2.json
+1_720p.mkv
+2_720p.mkv
+```
 
 ## 6. 데이터 저장 위치
 

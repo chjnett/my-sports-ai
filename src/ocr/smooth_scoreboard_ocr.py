@@ -135,7 +135,11 @@ def smooth_half(
             state = "held"
         elif stable_score == candidate:
             state = "confirmed"
-        elif stable_score is not None and is_valid_forward_change(stable_score, candidate, max_score_step):
+        elif (
+            stable_score is not None
+            and observed_score == candidate
+            and is_valid_forward_change(stable_score, candidate, max_score_step)
+        ):
             previous_score = stable_score
             stable_score = candidate
             changed = True

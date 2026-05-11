@@ -340,6 +340,8 @@ def command_for_stage(
                 str(config.get("top_k_values", "1,3,5,10,20")),
                 "--tolerances",
                 "5,10,30",
+                "--matching",
+                str(config.get("eval_matching", "interval")),
             ],
             paths.topk_eval,
         )
@@ -355,7 +357,7 @@ def command_for_stage(
                 paths.review_root.as_posix(),
                 "--top-k",
                 str(config.get("review_top_k", 5)),
-                "--context-sec=-10,0,10",
+                f"--context-sec={config.get('review_context_sec', '-10,0,10,30')}",
                 "--thumb-width",
                 "320",
                 "--cols",

@@ -2,6 +2,15 @@
 
 이 문서는 EPL 2014-2015 5경기 검증을 한 번에 실행하기 위한 가이드입니다.
 
+현재 상태:
+
+```text
+2026-05-11 기준, 누락됐던 3경기의 Labels-v2.json과 720p 전후반 영상 다운로드가 완료되었습니다.
+5경기 batch는 정상 완료되었습니다.
+candidate 대표 timestamp는 score_change를 우선하고, 평가는 candidate interval 기준으로 수행합니다.
+review contact sheet는 -10/0/+10/+30초 프레임을 표시합니다.
+```
+
 ## 1. 대상 경기
 
 설정 파일:
@@ -88,6 +97,33 @@ docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.ru
   --continue-on-error
 ```
 
+장시간 실행할 때는 백그라운드 컨테이너로 실행합니다.
+
+```powershell
+docker compose -f compose.gpu.yml run -d --name my_sports_ai_batch5 vision-gpu python3 -m src.pipeline.run_batch `
+  --config configs/batch_5_matches.yml `
+  --skip-existing `
+  --continue-on-error
+```
+
+이미 같은 이름의 컨테이너가 있으면 먼저 상태를 확인합니다.
+
+```powershell
+docker ps -a --filter "name=my_sports_ai_batch5" --format "table {{.Names}}\t{{.Status}}\t{{.ID}}"
+```
+
+`Up` 상태면 새로 실행하지 말고 로그만 봅니다.
+
+```powershell
+docker logs -f --tail 100 my_sports_ai_batch5
+```
+
+`Exited` 상태이고 새로 실행해야 한다면 제거 후 다시 실행합니다.
+
+```powershell
+docker rm my_sports_ai_batch5
+```
+
 실행 stage:
 
 ```text
@@ -103,6 +139,13 @@ fuse
 rank
 eval
 review
+```
+
+평가 방식:
+
+```text
+point timestamp만 보지 않고 candidate start/end interval을 함께 봅니다.
+score_change가 포함된 candidate는 대표 timestamp를 score_change 시각으로 둡니다.
 ```
 
 ## 5. 이어서 실행하기
@@ -158,6 +201,21 @@ outputs/batch_5/matches/{match_id}/reviews/highlight_top5/contact_sheet.jpg
 Invoke-Item outputs\batch_5\matches\chelsea_burnley_2015_02_21\reviews\highlight_top5\contact_sheet.jpg
 ```
 
+5경기 contact sheet를 한 번에 찾기:
+
+```powershell
+Get-ChildItem outputs\batch_5\matches -Recurse -Filter contact_sheet.jpg |
+  Select-Object FullName
+```
+
+완료 후 우선 확인할 표:
+
+```powershell
+Import-Csv outputs\batch_5\batch_summary.csv |
+  Select-Object match_id,status,candidates,ranked_candidates,top5_recall_at_30s |
+  Format-Table -AutoSize
+```
+
 ## 7. 예상 소요 시간
 
 RTX 3090 기준 대략:
@@ -189,10 +247,45 @@ PaddleOCR: 경기당 2-8분
 Goal이 있는 경기에서 Top-5 Recall@30s 확인
 ```
 
+현재 5경기 결과:
+
+```text
+Chelsea-Burnley              Top-5 Recall@30s = 1.000
+Crystal Palace-Arsenal       Top-5 Recall@30s = 1.000
+Swansea-Man United           Top-5 Recall@30s = 1.000
+Southampton-Liverpool        Top-5 Recall@30s = 1.000
+Burnley-Arsenal              Top-5 Recall@30s = 1.000
+
+Total: 11/11 = 1.000
+```
+
 다음 판단:
 
 ```text
-Top-5 Recall@30s가 낮은 경기 -> 실패 사례 수집
+Top-5 Recall@30s가 낮은 경기 -> 현재 5경기 기준 없음
 후보가 너무 많은 경기 -> ranking/stopword 조정
 OCR이 약한 경기 -> crop/OCR 설정 조정
 ```
+
+참고:
+
+```text
+Swansea-Man United 첫 골 누락 원인:
+이전 OCR window에 남아 있던 잘못된 1-0 후보가 현재 프레임에서 다시 관측되지 않았는데도 score_change로 확정됨.
+
+수정:
+score smoothing 단계에서 현재 row의 observed_score가 candidate와 같을 때만 새 score_change를 확정하도록 변경.
+```
+
+상세 트러블슈팅 기록은 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)를 참고합니다.
+
+## 9. 내가 해야 할 체크리스트
+
+- [ ] batch 실행 중에는 노트북 전원 연결 유지
+- [ ] 절전 모드 진입 방지
+- [ ] `docker logs -f --tail 100 my_sports_ai_batch5`로 현재 stage 확인
+- [ ] 완료 후 `batch_summary.csv` 확인
+- [ ] `completed`가 아닌 경기 이름 기록
+- [x] Top-5 Recall@30s가 낮은 경기 이름 기록
+- [ ] 각 경기 contact sheet를 영상과 비교해서 실제 골 장면 포함 여부 확인
+- [x] 실패 경기의 `highlight_topk_eval_details.csv`를 확인해 가장 가까운 후보 시간 차이 기록

@@ -20,6 +20,7 @@ FILE_OPTIONS = {
 }
 
 DOWNLOAD_PRESETS = {
+    "라벨 + 풀 경기 영상 720p": ["Labels-v2.json", "1_720p.mkv", "2_720p.mkv"],
     "풀 경기 영상 720p": ["1_720p.mkv", "2_720p.mkv"],
     "저해상도 영상 224p": ["1_224p.mkv", "2_224p.mkv"],
     "라벨 JSON만": ["Labels-v2.json"],

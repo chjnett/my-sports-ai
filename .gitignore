@@ -55,6 +55,20 @@ runs/
 *.pth
 *.onnx
 *.engine
+*.mkv
+*.mp4
+*.avi
+*.mov
+*.webm
+*.log
+
+# Generated video/highlight artifacts
+clips/
+exports/
+tmp/
+temp/
+cache/
+.cache/
 
 # Local environment
 .env
