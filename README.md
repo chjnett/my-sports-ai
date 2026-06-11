@@ -11,7 +11,7 @@ SoccerNet broadcast videos에서 scoreboard, replay logo, broadcast text cue를 
 
 ## Demo
 
-공개 가능한 샘플 영상은 `docs/assets/demo/`에 올리는 구조로 준비되어 있습니다. SoccerNet 원본 영상은 라이선스/NDA 이슈가 있으므로, GitHub에는 권한 문제가 없는 짧은 데모 클립이나 블러 처리된 리뷰 영상을 올리는 것을 권장합니다.
+
 
 [![Highlight demo contact sheet](docs/assets/demo/contact_sheet_sample.jpg)](docs/assets/demo/highlight_top5_sample.mp4)
 
