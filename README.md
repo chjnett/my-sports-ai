@@ -13,8 +13,12 @@ SoccerNet broadcast videos에서 scoreboard, replay logo, broadcast text cue를 
 
 공개 가능한 샘플 영상은 `docs/assets/demo/`에 올리는 구조로 준비되어 있습니다. SoccerNet 원본 영상은 라이선스/NDA 이슈가 있으므로, GitHub에는 권한 문제가 없는 짧은 데모 클립이나 블러 처리된 리뷰 영상을 올리는 것을 권장합니다.
 
-```markdown
 <video src="docs/assets/demo/highlight_top5_sample.mp4" controls width="100%"></video>
+
+Demo source:
+
+```text
+outputs/batch_5/matches/burnley_arsenal_2015_04_11/clips/rank_001__candidate_0007__h1__11m13s.mp4
 ```
 
 현재 로컬에서 생성된 하이라이트 영상:
