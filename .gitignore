@@ -62,6 +62,16 @@ runs/
 *.webm
 *.log
 
+# Public README demo assets. Keep these short and license-safe.
+!docs/assets/
+!docs/assets/demo/
+!docs/assets/demo/README.md
+!docs/assets/demo/.gitkeep
+!docs/assets/demo/*.mp4
+!docs/assets/demo/*.webm
+!docs/assets/demo/*.jpg
+!docs/assets/demo/*.png
+
 # Generated video/highlight artifacts
 clips/
 exports/

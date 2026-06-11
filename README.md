@@ -1,136 +1,215 @@
 # my-sports-ai
 
-SoccerNet 축구 중계 영상을 내려받고, 스코어보드와 중계 그래픽 OCR을 이용해 설명 가능한 하이라이트 생성 연구를 진행하는 프로젝트입니다.
+![Project](https://img.shields.io/badge/project-soccer%20highlight%20automation-0f766e)
+![Pipeline](https://img.shields.io/badge/pipeline-vision%20%2B%20OCR%20%2B%20events-2563eb)
+![Docker](https://img.shields.io/badge/runtime-docker-2496ed)
+![Status](https://img.shields.io/badge/status-research%20MVP-f59e0b)
 
-## 핵심 목표
+SoccerNet broadcast videos에서 scoreboard, replay logo, broadcast text cue를 읽고, 설명 가능한 하이라이트 후보를 뽑아 실제 `highlight_top5.mp4`까지 자동 생성하는 연구/프로덕트형 파이프라인입니다.
+
+이 프로젝트의 핵심은 “골 장면을 그냥 잘라내는 것”이 아니라, 왜 이 구간이 하이라이트인지 `score_change`, `replay_segment`, `text_cue`, `rank_score` 같은 근거와 함께 남기는 것입니다.
+
+## Demo
+
+공개 가능한 샘플 영상은 `docs/assets/demo/`에 올리는 구조로 준비되어 있습니다. SoccerNet 원본 영상은 라이선스/NDA 이슈가 있으므로, GitHub에는 권한 문제가 없는 짧은 데모 클립이나 블러 처리된 리뷰 영상을 올리는 것을 권장합니다.
+
+```markdown
+<video src="docs/assets/demo/highlight_top5_sample.mp4" controls width="100%"></video>
+```
+
+현재 로컬에서 생성된 하이라이트 영상:
+
+| Match | Highlight video | Size |
+|---|---:|---:|
+| Chelsea 1-1 Burnley | `outputs/batch_5/matches/chelsea_burnley_2015_02_21/highlights/highlight_top5.mp4` | 139.2 MB |
+| Crystal Palace 1-2 Arsenal | `outputs/batch_5/matches/crystal_palace_arsenal_2015_02_21/highlights/highlight_top5.mp4` | 158.7 MB |
+| Swansea 2-1 Manchester United | `outputs/batch_5/matches/swansea_manchester_united_2015_02_21/highlights/highlight_top5.mp4` | 115.4 MB |
+| Southampton 0-2 Liverpool | `outputs/batch_5/matches/southampton_liverpool_2015_02_22/highlights/highlight_top5.mp4` | 110.7 MB |
+| Burnley 0-1 Arsenal | `outputs/batch_5/matches/burnley_arsenal_2015_04_11/highlights/highlight_top5.mp4` | 118.8 MB |
+
+리뷰용 contact sheet도 경기별로 생성됩니다.
 
 ```text
-축구 중계 화면의 스코어보드, 점수 변화, 경기 시간, 리플레이/VAR/선수명 자막 같은 그래픽 OCR 정보는
-설명 가능한 하이라이트 생성의 시간적 단서로 활용될 수 있는가?
+outputs/batch_5/matches/{match_id}/reviews/highlight_top5/contact_sheet.jpg
 ```
 
-최종 연구 주제:
+## Results
+
+`configs/batch_5_matches.yml` 기준 EPL 2014-2015 5경기 배치 실행 결과입니다. 원본 결과는 `outputs/batch_5/batch_summary.csv`에 저장됩니다.
+
+| Match | Status | Detections | OCR rows | Score events | Text events | Candidates | Clips | Top-5 Recall@30s | Video |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| Chelsea 1-1 Burnley | completed | 5,393 | 5,277 | 1 | 177 | 67 | 8 | 1.000 | yes |
+| Crystal Palace 1-2 Arsenal | completed | 5,774 | 5,548 | 3 | 111 | 70 | 10 | 1.000 | yes |
+| Swansea 2-1 Manchester United | completed | 5,904 | 5,417 | 3 | 248 | 58 | 10 | 1.000 | yes |
+| Southampton 0-2 Liverpool | completed | 5,507 | 5,374 | 2 | 199 | 69 | 9 | 1.000 | yes |
+| Burnley 0-1 Arsenal | completed | 5,720 | 5,336 | 1 | 444 | 55 | 10 | 1.000 | yes |
+
+Batch totals:
+
+| Metric | Value |
+|---|---:|
+| Matches | 5 |
+| Graphic detections | 28,298 |
+| Scoreboard OCR rows | 26,952 |
+| Score change events | 10 |
+| Broadcast text events | 1,179 |
+| Ranked highlight candidates | 319 |
+| Extracted clips | 47 |
+| Generated highlight videos | 5 |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["SoccerNet match videos"] --> B["Frame sampling"]
+    B --> C["YOLO broadcast graphic detector"]
+    C --> D["Scoreboard crops"]
+    C --> E["Replay logo / replay segment events"]
+    D --> F["PaddleOCR + score parser"]
+    F --> G["OCR smoothing"]
+    G --> H["Score change events"]
+    F --> I["Broadcast text cues"]
+    E --> J["Candidate fusion"]
+    H --> J
+    I --> J
+    J --> K["Rank highlight candidates"]
+    K --> L["Top-K evaluation"]
+    K --> M["Review contact sheet"]
+    K --> N["Clip plan"]
+    N --> O["FFmpeg clip extraction"]
+    O --> P["highlight_top5.mp4"]
+```
+
+## Pipeline
+
+The default batch runner executes these stages:
 
 ```text
-축구 중계 영상의 그래픽 OCR 이벤트 그래프를 이용한 설명 가능한 하이라이트 생성
+frames -> detect -> replay -> crops -> ocr -> reparse -> smooth
+-> overlay_ocr -> overlay_text -> text -> fuse -> rank -> eval
+-> review -> clip_plan -> clips -> compose
 ```
 
-## 현재 구현 상태
+Key implementation modules:
 
-현재는 연구 데이터 수집을 위한 Streamlit GUI가 구현되어 있습니다.
+| Area | Files |
+|---|---|
+| Batch orchestration | `src/pipeline/run_batch.py` |
+| Frame sampling | `src/phase1a.py`, `src/video/frame_sampler.py` |
+| Graphic detection | `src/vision/detect_graphics.py`, `src/vision/train_detector.py` |
+| Replay events | `src/vision/build_replay_events.py` |
+| Scoreboard OCR | `src/ocr/run_scoreboard_ocr.py`, `src/ocr/reparse_scoreboard_ocr.py`, `src/ocr/smooth_scoreboard_ocr.py` |
+| Text cue extraction | `src/ocr/extract_text_cues.py` |
+| Candidate fusion/ranking | `src/events/fuse_highlight_candidates.py`, `src/events/rank_highlight_candidates.py` |
+| Evaluation/review | `src/evaluation/evaluate_topk_candidates.py`, `src/events/render_ranked_candidates.py` |
+| Video generation | `src/video/build_clip_plan.py`, `src/video/extract_highlight_clips.py`, `src/video/compose_highlight_video.py` |
 
-주요 기능:
+## Quick Start
 
-* SoccerNet split별 경기 목록 조회
-* 리그, 시즌, 날짜, 검색어 기반 경기 필터링
-* `Labels-v2.json`, 224p 영상, 720p 영상 다운로드
-* 선택한 경기 기준 동일/유사 split 후보 탐색
-* Docker 기반 실행
-* SoccerNet 연결 검증 스크립트
+### 1. Environment
 
-## 빠른 시작
-
-Docker Desktop을 실행한 뒤 프로젝트 루트에서 실행합니다.
-
-```bash
-docker compose up --build
-```
-
-브라우저에서 접속합니다.
-
-```text
-http://localhost:8501
-```
-
-이미 빌드가 끝난 뒤에는 다음 명령으로 실행합니다.
-
-```bash
-docker compose up
-```
-
-## 환경 변수
-
-SoccerNet 비밀번호는 `.env` 파일에서 관리합니다.
+Create `.env` with your SoccerNet password:
 
 ```text
 SOCCERNET_PW=
 ```
 
-메일로 받은 실제 SoccerNet 비밀번호를 입력하세요. Broadcast video 다운로드는 SoccerNet NDA 승인과 올바른 비밀번호가 필요합니다.
-
-## 데이터 저장 위치
-
-다운로드된 데이터는 `data/spotting/` 아래에 저장됩니다.
-
-```text
-data/
-└── spotting/
-    └── spain_laliga/
-        └── 2016-2017/
-            └── 2017-02-11 - 18-15 Alaves 0 - 6 Barcelona/
-                ├── Labels-v2.json
-                ├── 1_720p.mkv
-                └── 2_720p.mkv
-```
-
-`data/` 폴더는 대용량 파일 저장소이므로 Git 추적 대상에서 제외합니다.
-
-## 문서 구조
-
-| 문서 | 역할 |
-|---|---|
-| [PROJECT_MASTER_PLAN.md](PROJECT_MASTER_PLAN.md) | 전체 개발 우선순위와 로드맵 |
-| [MDGUIDE.md](MDGUIDE.md) | 현재 상황을 이해하기 위한 문서 읽기 순서 |
-| [SETUP_GUIDE.md](SETUP_GUIDE.md) | 최초 환경 세팅 |
-| [RUN_GUIDE.md](RUN_GUIDE.md) | GUI 실행과 다운로드 사용법 |
-| [YOLO_DATASET_TEST_GUIDE.md](YOLO_DATASET_TEST_GUIDE.md) | YOLO 데이터셋 준비/라벨링/학습 테스트 |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 실제 문제 원인과 해결 기록 |
-| [docs/README.md](docs/README.md) | 연구 문서 인덱스 |
-| [docs/RESEARCH_ARCHITECTURE.md](docs/RESEARCH_ARCHITECTURE.md) | 전체 연구 아키텍처 |
-| [docs/PHASE_1_VISION_OCR_PIPELINE.md](docs/PHASE_1_VISION_OCR_PIPELINE.md) | 1순위 OCR 파이프라인 실행 명세 |
-| [docs/TECHNICAL_SPEC.md](docs/TECHNICAL_SPEC.md) | GPU/모델/기술 스택 사양 |
-
-## 자주 쓰는 명령
+### 2. GUI downloader
 
 ```bash
-# GUI 실행
-docker compose up
-
-# 빌드 후 GUI 실행
 docker compose up --build
-
-# 백그라운드 실행
-docker compose up -d
-
-# 로그 확인
-docker compose logs -f soccernet-app
-
-# 종료
-docker compose down
-
-# SoccerNet 연결 검증
-docker compose run --rm soccernet-app python verify_setup.py
 ```
 
-## 다음 개발 우선순위
-
-다음 단계는 `docs/PHASE_1_VISION_OCR_PIPELINE.md` 기준으로 진행합니다.
+Open:
 
 ```text
-Frame sampling
--> Manual crop config
--> OCR CSV
--> OCR smoothing
--> Score change detection
--> Goal label evaluation
+http://localhost:8501
 ```
 
-Phase 1A는 Docker에서 바로 실행할 수 있습니다.
+### 3. GPU batch pipeline
 
-```bash
-docker compose run --rm soccernet-app python -m src.phase1a \
-  --match-dir "data/spotting/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley" \
-  --data-root data/spotting \
-  --fps 1 \
-  --max-seconds 3
+```powershell
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.run_batch `
+  --config configs/batch_5_matches.yml `
+  --skip-existing `
+  --continue-on-error
 ```
+
+Run only video-generation stages after candidates already exist:
+
+```powershell
+docker compose -f compose.gpu.yml run --rm vision-gpu python3 -m src.pipeline.run_batch `
+  --config configs/batch_5_matches.yml `
+  --stages clip_plan,clips,compose `
+  --skip-existing `
+  --continue-on-error
+```
+
+## Output Layout
+
+```text
+outputs/batch_5/
+  batch_summary.csv
+  matches/
+    {match_id}/
+      detections/graphics.csv
+      events/
+        replay_events.csv
+        score_change_events.csv
+        text_cues.csv
+        highlight_candidates.csv
+        highlight_candidates_ranked.csv
+      ocr/
+        scoreboard_full.csv
+        scoreboard_full_reparsed.csv
+        scoreboard_smoothed.csv
+      clips/
+        clip_plan.csv
+        rank_001__candidate_*.mp4
+      highlights/
+        highlight_top5.mp4
+      reports/
+        highlight_topk_eval.csv
+        clip_extraction_report.csv
+      reviews/
+        highlight_top5/contact_sheet.jpg
+```
+
+## Research Question
+
+```text
+Can broadcast graphics and OCR events from soccer videos produce explainable highlight videos with enough temporal precision to recover goal moments?
+```
+
+Working hypothesis:
+
+```text
+scoreboard score changes + replay logos + broadcast text cues
+-> explainable event graph
+-> ranked highlight candidates
+-> clip plan
+-> automatic highlight video
+```
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [PROJECT_MASTER_PLAN.md](PROJECT_MASTER_PLAN.md) | Project roadmap and development priorities |
+| [BATCH_5_MATCH_GUIDE.md](BATCH_5_MATCH_GUIDE.md) | 5-match batch execution and validation guide |
+| [HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md](HIGHLIGHT_VIDEO_AUTOMATION_DESIGN.md) | Clip planning, extraction, and composition design |
+| [OCR_SCOREBOARD_TEST_GUIDE.md](OCR_SCOREBOARD_TEST_GUIDE.md) | Scoreboard OCR and score-change evaluation workflow |
+| [YOLO_DATASET_TEST_GUIDE.md](YOLO_DATASET_TEST_GUIDE.md) | YOLO dataset preparation and training workflow |
+| [RUN_GUIDE.md](RUN_GUIDE.md) | GUI and downloader usage |
+| [SETUP_GUIDE.md](SETUP_GUIDE.md) | Initial setup |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Known issues and fixes |
+| [docs/RESEARCH_ARCHITECTURE.md](docs/RESEARCH_ARCHITECTURE.md) | Research architecture |
+| [docs/PHASE_1_VISION_OCR_PIPELINE.md](docs/PHASE_1_VISION_OCR_PIPELINE.md) | Phase 1 Vision/OCR pipeline |
+| [docs/TECHNICAL_SPEC.md](docs/TECHNICAL_SPEC.md) | GPU, model, and library specification |
+
+## Dataset And License Notes
+
+SoccerNet broadcast videos and labels are not redistributed in this repository. Downloaded data stays under `data/spotting/`, model weights stay under `models/`, and generated outputs stay under `outputs/`.
+
+The repository code can be shared independently, but any public demo video must respect the original content license and SoccerNet access terms.
