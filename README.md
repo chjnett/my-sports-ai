@@ -13,7 +13,11 @@ SoccerNet broadcast videos에서 scoreboard, replay logo, broadcast text cue를 
 
 공개 가능한 샘플 영상은 `docs/assets/demo/`에 올리는 구조로 준비되어 있습니다. SoccerNet 원본 영상은 라이선스/NDA 이슈가 있으므로, GitHub에는 권한 문제가 없는 짧은 데모 클립이나 블러 처리된 리뷰 영상을 올리는 것을 권장합니다.
 
-<video src="docs/assets/demo/highlight_top5_sample.mp4" controls width="100%"></video>
+[![Highlight demo contact sheet](docs/assets/demo/contact_sheet_sample.jpg)](docs/assets/demo/highlight_top5_sample.mp4)
+
+Click the preview image to open the demo clip:
+
+[Watch `highlight_top5_sample.mp4`](docs/assets/demo/highlight_top5_sample.mp4)
 
 Demo source:
 
@@ -23,13 +27,19 @@ outputs/batch_5/matches/burnley_arsenal_2015_04_11/clips/rank_001__candidate_000
 
 현재 로컬에서 생성된 하이라이트 영상:
 
-| Match | Highlight video | Size |
-|---|---:|---:|
-| Chelsea 1-1 Burnley | `outputs/batch_5/matches/chelsea_burnley_2015_02_21/highlights/highlight_top5.mp4` | 139.2 MB |
-| Crystal Palace 1-2 Arsenal | `outputs/batch_5/matches/crystal_palace_arsenal_2015_02_21/highlights/highlight_top5.mp4` | 158.7 MB |
-| Swansea 2-1 Manchester United | `outputs/batch_5/matches/swansea_manchester_united_2015_02_21/highlights/highlight_top5.mp4` | 115.4 MB |
-| Southampton 0-2 Liverpool | `outputs/batch_5/matches/southampton_liverpool_2015_02_22/highlights/highlight_top5.mp4` | 110.7 MB |
-| Burnley 0-1 Arsenal | `outputs/batch_5/matches/burnley_arsenal_2015_04_11/highlights/highlight_top5.mp4` | 118.8 MB |
+| Match | Generated artifact | Size | Status |
+|---|---|---:|---|
+| Chelsea 1-1 Burnley | `highlight_top5.mp4` | 139.2 MB | generated |
+| Crystal Palace 1-2 Arsenal | `highlight_top5.mp4` | 158.7 MB | generated |
+| Swansea 2-1 Manchester United | `highlight_top5.mp4` | 115.4 MB | generated |
+| Southampton 0-2 Liverpool | `highlight_top5.mp4` | 110.7 MB | generated |
+| Burnley 0-1 Arsenal | `highlight_top5.mp4` | 118.8 MB | generated |
+
+Local output pattern:
+
+```text
+outputs/batch_5/matches/{match_id}/highlights/highlight_top5.mp4
+```
 
 리뷰용 contact sheet도 경기별로 생성됩니다.
 
